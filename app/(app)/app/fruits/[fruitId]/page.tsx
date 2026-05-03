@@ -17,12 +17,17 @@ import {
 } from "@/lib/fruit-utils";
 import { formatDate } from "@/lib/utils";
 
-export default async function FruitDetailPage({ params }: { params: { fruitId: string } }) {
+export default async function FruitDetailPage({
+  params,
+}: {
+  params: Promise<{ fruitId: string }>;
+}) {
+  const { fruitId } = await params;
   const session = await auth();
   const workspaceId = (session?.user as any)?.workspaceId;
 
   const fruit = await prisma.fruit.findFirst({
-    where: { id: params.fruitId, workspaceId },
+    where: { id: fruitId, workspaceId },
     include: {
       campaigns: {
         orderBy: { year: "desc" },
