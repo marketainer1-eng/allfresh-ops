@@ -1,0 +1,389 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Workspace & Users ───────────────────────────────────────────────────────
+
+model Workspace {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  ownerEmail String   @map("owner_email")
+  plan       String   @default("free")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  users            User[]
+  organizations    Organization[]
+  projects         Project[]
+  fruits           Fruit[]
+  fruitCampaigns   FruitCampaign[]
+  fruitPerformances FruitPerformance[]
+  fruitTasks       FruitTask[]
+  fruitInsights    FruitInsight[]
+
+  @@map("workspaces")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  role         String   @default("member")
+  passwordHash String?  @map("password_hash")
+  avatarUrl    String?  @map("avatar_url")
+  workspaceId  String   @map("workspace_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects          Project[]          @relation("CreatedProjects")
+  diagnosisSessions DiagnosisSession[] @relation("CreatedSessions")
+
+  @@map("users")
+}
+
+// ─── Organization & Project ───────────────────────────────────────────────────
+
+model Organization {
+  id           String   @id @default(cuid())
+  workspaceId  String   @map("workspace_id")
+  name         String
+  industry     String?
+  size         String?
+  contactEmail String?  @map("contact_email")
+  description  String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects  Project[]
+
+  @@map("organizations")
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  workspaceId    String   @map("workspace_id")
+  organizationId String?  @map("organization_id")
+  name           String
+  brand          String?
+  status         String   @default("active")
+  description    String?  @db.Text
+  tags           String[] @default([])
+  createdBy      String   @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  creator      User          @relation("CreatedProjects", fields: [createdBy], references: [id])
+  sessions     DiagnosisSession[]
+
+  @@map("projects")
+}
+
+// ─── Diagnosis ────────────────────────────────────────────────────────────────
+
+model DiagnosisSession {
+  id          String    @id @default(cuid())
+  projectId   String    @map("project_id")
+  title       String
+  status      String    @default("draft")
+  objective   String?   @db.Text
+  periodStart DateTime? @map("period_start")
+  periodEnd   DateTime? @map("period_end")
+  summary     String?   @db.Text
+  createdBy   String    @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  creator       User           @relation("CreatedSessions", fields: [createdBy], references: [id])
+  customerFlows CustomerFlow[]
+  symptoms      Symptom[]
+  bottlenecks   Bottleneck[]
+  ticketDrafts  TicketDraft[]
+  rechecks      Recheck[]
+  reports       Report[]
+
+  @@map("diagnosis_sessions")
+}
+
+model CustomerFlow {
+  id             String   @id @default(cuid())
+  sessionId      String   @map("session_id")
+  stepOrder      Int      @map("step_order")
+  stepName       String   @map("step_name")
+  stepType       String   @map("step_type")
+  channel        String?
+  description    String?  @db.Text
+  expectedAction String?  @map("expected_action") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  session DiagnosisSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("customer_flows")
+}
+
+model Symptom {
+  id              String   @id @default(cuid())
+  sessionId       String   @map("session_id")
+  title           String
+  description     String?  @db.Text
+  quote           String?  @db.Text
+  journeyStep     String   @map("journey_step")
+  severity        Int      @default(1)
+  frequency       Int      @default(1)
+  channel         String?
+  tags            String[] @default([])
+  businessImpact  Int      @default(1) @map("business_impact")
+  evidenceCount   Int      @default(0) @map("evidence_count")
+  bottleneckScore Float?   @map("bottleneck_score")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  session       DiagnosisSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  evidenceItems EvidenceItem[]
+
+  @@map("symptoms")
+}
+
+model EvidenceItem {
+  id        String   @id @default(cuid())
+  symptomId String   @map("symptom_id")
+  sessionId String   @map("session_id")
+  type      String
+  title     String
+  content   String?  @db.Text
+  fileUrl   String?  @map("file_url")
+  fileName  String?  @map("file_name")
+  source    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  symptom Symptom @relation(fields: [symptomId], references: [id], onDelete: Cascade)
+
+  @@map("evidence_items")
+}
+
+// ─── Bottleneck ───────────────────────────────────────────────────────────────
+
+model Bottleneck {
+  id                  String   @id @default(cuid())
+  sessionId           String   @map("session_id")
+  rank                Int
+  journeyStep         String   @map("journey_step")
+  label               String
+  totalScore          Float    @map("total_score")
+  severityScore       Float    @map("severity_score")
+  frequencyScore      Float    @map("frequency_score")
+  evidenceScore       Float    @map("evidence_score")
+  businessImpactScore Float    @map("business_impact_score")
+  symptomIds          String[] @map("symptom_ids")
+  tags                String[] @default([])
+  description         String?  @db.Text
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  session      DiagnosisSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  ticketDrafts TicketDraft[]
+
+  @@map("bottlenecks")
+}
+
+// ─── Ticket ───────────────────────────────────────────────────────────────────
+
+model TicketDraft {
+  id             String   @id @default(cuid())
+  bottleneckId   String?  @map("bottleneck_id")
+  sessionId      String   @map("session_id")
+  title          String
+  priority       String   @default("medium")
+  type           String   @default("improvement")
+  description    String?  @db.Text
+  hypothesis     String?  @db.Text
+  proposedAction String?  @map("proposed_action") @db.Text
+  successMetric  String?  @map("success_metric") @db.Text
+  status         String   @default("draft")
+  assignee       String?
+  tags           String[] @default([])
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  session    DiagnosisSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  bottleneck Bottleneck?      @relation(fields: [bottleneckId], references: [id])
+  rechecks   Recheck[]
+
+  @@map("ticket_drafts")
+}
+
+// ─── Recheck ──────────────────────────────────────────────────────────────────
+
+model Recheck {
+  id           String   @id @default(cuid())
+  ticketId     String   @map("ticket_id")
+  sessionId    String   @map("session_id")
+  checkDate    DateTime @map("check_date")
+  result       String
+  metricBefore String?  @map("metric_before")
+  metricAfter  String?  @map("metric_after")
+  note         String?  @db.Text
+  checkedBy    String?  @map("checked_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  ticket  TicketDraft      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  session DiagnosisSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("rechecks")
+}
+
+// ─── Fruit Portfolio (과일 중심 운영 구조) ────────────────────────────────────
+
+model Fruit {
+  id                String   @id @default(cuid())
+  workspaceId       String   @map("workspace_id")
+  name              String                          // 딸기, 포도, 망고
+  variety           String?                         // 설향, 샤인머스캣, 애플망고
+  category          String?                         // 베리류, 포도류, 열대과일
+  emoji             String?  @default("🍓")
+  seasonStartMonth  Int      @map("season_start_month")   // 1-12
+  seasonEndMonth    Int      @map("season_end_month")
+  peakStartMonth    Int      @map("peak_start_month")
+  peakEndMonth      Int      @map("peak_end_month")
+  sourcingLeadDays  Int      @default(30) @map("sourcing_lead_days")
+  marketingLeadDays Int      @default(14) @map("marketing_lead_days")
+  defaultChannels   String[] @default([]) @map("default_channels")
+  priorityLevel     Int      @default(2) @map("priority_level")   // 1=low 2=mid 3=high
+  isActive          Boolean  @default(true) @map("is_active")
+  description       String?  @db.Text
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  workspace    Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns    FruitCampaign[]
+  performances FruitPerformance[]
+  tasks        FruitTask[]
+  insights     FruitInsight[]
+
+  @@map("fruits")
+}
+
+model FruitCampaign {
+  id                 String    @id @default(cuid())
+  fruitId            String    @map("fruit_id")
+  workspaceId        String    @map("workspace_id")
+  year               Int
+  season             String                            // spring, summer, autumn, winter
+  title              String
+  sourcingStartDate  DateTime? @map("sourcing_start_date")
+  pricingDueDate     DateTime? @map("pricing_due_date")
+  contentDueDate     DateTime? @map("content_due_date")
+  launchDate         DateTime? @map("launch_date")
+  promoPeakStartDate DateTime? @map("promo_peak_start_date")
+  promoPeakEndDate   DateTime? @map("promo_peak_end_date")
+  reviewDate         DateTime? @map("review_date")
+  ownerId            String?   @map("owner_id")
+  status             String    @default("draft")  // draft, planned, active, completed, delayed
+  notes              String?   @db.Text
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  fruit        Fruit              @relation(fields: [fruitId], references: [id], onDelete: Cascade)
+  workspace    Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  performances FruitPerformance[]
+  tasks        FruitTask[]
+  insights     FruitInsight[]
+
+  @@map("fruit_campaigns")
+}
+
+model FruitPerformance {
+  id              String   @id @default(cuid())
+  fruitId         String   @map("fruit_id")
+  campaignId      String?  @map("campaign_id")
+  workspaceId     String   @map("workspace_id")
+  channel         String
+  salesAmount     Float    @default(0) @map("sales_amount")
+  marginAmount    Float    @default(0) @map("margin_amount")
+  marginRate      Float    @default(0) @map("margin_rate")
+  csCount         Int      @default(0) @map("cs_count")
+  returnRate      Float    @default(0) @map("return_rate")
+  conversionRate  Float    @default(0) @map("conversion_rate")
+  reviewSummary   String?  @map("review_summary") @db.Text
+  nextAction      String?  @map("next_action") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  fruit     Fruit          @relation(fields: [fruitId], references: [id], onDelete: Cascade)
+  campaign  FruitCampaign? @relation(fields: [campaignId], references: [id])
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("fruit_performances")
+}
+
+model FruitTask {
+  id          String    @id @default(cuid())
+  fruitId     String    @map("fruit_id")
+  campaignId  String?   @map("campaign_id")
+  workspaceId String    @map("workspace_id")
+  type        String                        // sourcing, pricing, content, sales, review
+  title       String
+  assigneeId  String?   @map("assignee_id")
+  dueDate     DateTime? @map("due_date")
+  status      String    @default("pending") // pending, in_progress, done, delayed
+  priority    String    @default("medium")  // low, medium, high, critical
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  fruit     Fruit          @relation(fields: [fruitId], references: [id], onDelete: Cascade)
+  campaign  FruitCampaign? @relation(fields: [campaignId], references: [id])
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("fruit_tasks")
+}
+
+model FruitInsight {
+  id                    String   @id @default(cuid())
+  fruitId               String   @map("fruit_id")
+  campaignId            String?  @map("campaign_id")
+  workspaceId           String   @map("workspace_id")
+  sourceYear            Int      @map("source_year")
+  summary               String   @db.Text
+  recommendation        String   @db.Text
+  linkedToNextCampaign  Boolean  @default(false) @map("linked_to_next_campaign")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  fruit     Fruit          @relation(fields: [fruitId], references: [id], onDelete: Cascade)
+  campaign  FruitCampaign? @relation(fields: [campaignId], references: [id])
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("fruit_insights")
+}
+
+// ─── Report ───────────────────────────────────────────────────────────────────
+
+model Report {
+  id              String   @id @default(cuid())
+  sessionId       String   @map("session_id")
+  projectId       String   @map("project_id")
+  title           String
+  symptomCount    Int      @default(0) @map("symptom_count")
+  bottleneckCount Int      @default(0) @map("bottleneck_count")
+  ticketCount     Int      @default(0) @map("ticket_count")
+  topBottleneck   String?  @map("top_bottleneck")
+  summary         String?  @db.Text
+  chartData       Json?    @map("chart_data")
+  status          String   @default("draft")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  session DiagnosisSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}

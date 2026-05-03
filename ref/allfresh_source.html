@@ -1,0 +1,2305 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "//www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="//www.w3.org/1999/xhtml" xml:lang="ko" lang="ko">
+
+
+
+<head><script>(function(i, s, o, g, r) {
+    var a = s.createElement(o);
+    var m = s.getElementsByTagName(o)[0];
+    a.async = true;
+    a.src = g;
+    a.onload = function() {
+        if (i[r].init) {
+            i[r].init('https://js-error-tracer-api.cafe24.com', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhbGxmcmVzaDc3Ny5jYWZlMjQuY29tIiwiYXVkIjoianMtZXJyb3ItdHJhY2VyLWFwaS5jYWZlMjQuY29tIiwibWFsbF9pZCI6ImFsbGZyZXNoNzc3Iiwic2hvcF9ubyI6MSwicGF0aF9yb2xlIjoiTUFJTiIsImxhbmd1YWdlX2NvZGUiOiJrb19LUiIsImNvdW50cnlfY29kZSI6IktSIiwiaXNfeXRzIjpmYWxzZSwiaXNfY29udGFpbmVyIjp0cnVlLCJ3b3Jrc3BhY2UiOiJwcm9kdWN0aW9uIn0.Uj09cN1fDNZIcioPLUS8hhGrscMYIdmJ5PTL3IFovxA', {"errors":{"path":"\/api\/v1\/store","collectWindowErrors":true,"preventDuplicateReports":true,"storageKeyPrefix":"EC_JET.MAIN","samplingEnabled":true,"samplingRate":0.5},"vitals":{"path":"\/api\/v1\/vitals","samplingEnabled":true,"samplingRate":0.3},"resources":{"path":"\/api\/v1\/resources","samplingEnabled":true,"samplingRate":0.5,"durationThreshold":3000}});
+        }
+    };
+    m.parentNode.insertBefore(a, m);
+}(window, document, 'script', '//assets.poxo.com/jet/jet.js', 'EC_JET'));</script>
+<script type="text/javascript">window.CAFE24 = window.CAFE24 || {};CAFE24.ROUTE = {"is_mobile":false,"is_need_route":false,"language_code":"ZZ","path":{"origin":"\/","result":"\/","prefix":""},"shop_no":0,"skin_code":"default","support_language_list":{"ar":"ar_EG","ar-EG":"ar_EG","de":"de_DE","de-DE":"de_DE","en":"en_US","en-IN":"en_IN","en-PH":"en_PH","en-US":"en_US","es":"es_ES","es-ES":"es_ES","hi":"hi_IN","hi-IN":"hi_IN","id":"id_ID","id-ID":"id_ID","it":"it_IT","it-IT":"it_IT","ja":"ja_JP","ja-JP":"ja_JP","ko":"ko_KR","ko-KR":"ko_KR","ms":"ms_MY","ms-MY":"ms_MY","pt":"pt_PT","pt-PT":"pt_PT","ru":"ru_RU","ru-RU":"ru_RU","th":"th_TH","th-TH":"th_TH","tr":"tr_TR","tr-TR":"tr_TR","vi":"vi_VN","vi-VN":"vi_VN","zh":"zh_CN","zh-CN":"zh_CN","zh-HK":"zh_HK","zh-MO":"zh_MO","zh-SG":"zh_SG","zh-TW":"zh_TW"}};</script><script type="text/javascript">if (typeof EC_ROUTE === "undefined") {
+    /**
+     * 프론트용 라우트 플러그인
+     * @type {{bInit: boolean, init: EC_ROUTE.init}}
+     * CAFE24.ROUTE 참조
+     */
+    var EC_ROUTE = {
+        EC_DOMAIN_PATH_INFO: 'EC_DOMAIN_PATH_INFO',
+        bInit: false,
+        aFromList: [],
+        aToList: [],
+        aCleanFilter: null,
+        init: function () {
+            if (this.bInit || typeof CAFE24.ROUTE === 'undefined') {
+                return;
+            }
+            this.bInit = true;
+            this.aCleanFilter = [
+                /^shop[1-9][0-9]*$/,
+                /^(m|p)$/,
+                new RegExp('^(' + Object.keys(CAFE24.ROUTE.support_language_list).join('|')  + ')$'),
+                /^skin-(base|skin[1-9][0-9]*|mobile[0-9]*)$/,
+            ];
+        },
+        isNeedRoute: function ()
+        {
+            return CAFE24.ROUTE.is_need_route;
+        },
+        /**
+         *
+         * @param iShopNo
+         * @param bMobile
+         * @param sFrontLanguage
+         * @param sSkinCode
+         * @returns {*|string}
+         */
+        getUrlDomain: function (iShopNo, bMobile, sFrontLanguage, sSkinCode)
+        {
+            var oRouteConfig = {};
+            if (typeof iShopNo == 'undefined') {
+                oRouteConfig.shop_no = CAFE24.SDE_SHOP_NUM;
+            } else {
+                oRouteConfig.shop_no = iShopNo;
+            }
+            if (typeof bMobile == 'undefined') {
+                oRouteConfig.is_mobile = false;
+            } else {
+                oRouteConfig.is_mobile = bMobile;
+            }
+            if (typeof sFrontLanguage == 'undefined') {
+                oRouteConfig.language_code = '';
+            }else {
+                oRouteConfig.language_code = sFrontLanguage; // 내부에서 로직으로 동작할땐 언어_지역 형태의 로케일 형태를 따른다.
+            }
+            if (typeof sSkinCode == 'undefined') {
+                oRouteConfig.skin_code = '';
+            }else {
+                oRouteConfig.skin_code = sSkinCode;
+            }
+
+            var sDomain = '';
+            if (oRouteConfig.shop_no != CAFE24.SDE_SHOP_NUM) {
+                // 접근된 다른 멀티샵 도메인 정보는 primary domain 를 조회해야함으로 ajax 를 통해 정보를 얻는다.
+                sDomain = this._getUrlDomainMultishop(oRouteConfig);
+            } else {
+                // 샵이 동일할 경우에는 접근된 domain 에 path 정보만 정리하여 반환함.
+                sDomain = this._getUrlDomain(oRouteConfig);
+            }
+            return sDomain;
+        },
+        _getUrlDomainMultishop: function (oRouteConfig)
+        {
+            var sDomain = '';
+            EC$.ajax({
+                type: 'GET',
+                url: '/exec/front/Shop/Domain',
+                data: {
+                    '_shop_no' : oRouteConfig.shop_no,
+                    'is_mobile' : oRouteConfig.is_mobile,
+                    'language_code' : oRouteConfig.language_code,
+                    'skin_code' : oRouteConfig.skin_code,
+                },
+                async: false,
+                dataType: 'json',
+                cache: true,
+                success: function(oResult) {
+                    switch (oResult.code) {
+                        case '0000' :
+                            sDomain = oResult.data;
+                            break;
+                        default :
+                            break;
+                    }
+                    return false;
+                }
+            });
+            return sDomain;
+        },
+        _getUrlDomain: function (oRouteConfig)
+        {
+            oRouteConfig.domain = this._getCreateHost(oRouteConfig);
+            return location.protocol + '//' + oRouteConfig.domain + this._getCreateUri(oRouteConfig);
+        },
+        _getCreateHost : function (oRouteConfig)
+        {
+            var sHost = location.host;
+            var aHost = sHost.split('.');
+            if (this.isBaseDomain(sHost)) {
+                if (aHost.length > 3) {
+                    aHost[0] = '';
+                }
+            } else if (oRouteConfig.is_mobile) {
+                if (this.isMobileDomain()) {
+                    oRouteConfig.is_mobile = false;
+                }
+            }
+            return aHost.filter(Boolean).join('.');
+        },
+        _getCreateUri: function (oRouteInfo)
+        {
+            var aUrl = [];
+            if (this.isBaseDomain() && oRouteInfo.shop_no > 1) {
+                aUrl.push('shop' + oRouteInfo.shop_no);
+            }
+            if (oRouteInfo.is_mobile) {
+                aUrl.push('m');
+            }
+            if (oRouteInfo.language_code != 'ZZ' && oRouteInfo.language_code != '') {
+                var iIndex = Object.values(CAFE24.ROUTE.support_language_list).indexOf(oRouteInfo.language_code);
+                if (iIndex !== -1) {
+                    aUrl.push(Object.keys(CAFE24.ROUTE.support_language_list)[iIndex]);
+                }
+            }
+            if (this.isBaseDomain() && oRouteInfo.skin_code != 'default' && oRouteInfo.skin_code != '') {
+                aUrl.push('skin-' + oRouteInfo.skin_code);
+            }
+            var sUrl= '/';
+            if (aUrl.length > 0) {
+                sUrl= '/' + aUrl.join('/');
+                sUrl = this.rtrim(sUrl, '/');
+            }
+            return sUrl;
+        },
+        /**
+         * en, en-US => en_US
+         */
+        convertValidLanguageCode: function (sUrlLanguageCode)
+        {
+            if (typeof CAFE24.ROUTE.support_language_list[sUrlLanguageCode] != 'undefined') {
+                return CAFE24.ROUTE.support_language_list[sUrlLanguageCode];
+            }
+            return false;
+        },
+        isMobileDomain: function (sHost)
+        {
+            if (typeof sHost == 'undefined') {
+                sHost = location.host;
+            }
+            var aMatched = sHost.match(/^(m|mobile|skin\-mobile|skin\-mobile[0-9]+[\-]{2}shop[0-9]+|skin\-mobile[0-9]+|mobile[\-]{2}shop[0-9]+)\./i);
+            return aMatched != null;
+        },
+        isBaseDomain: function (sHost)
+        {
+            if (typeof sHost == 'undefined') {
+                sHost = location.host;
+            }
+            return sHost.indexOf(CAFE24.GLOBAL_INFO.getRootDomain()) !== -1;
+        },
+        removePrefixUrl: function (sUrl)
+        {
+            if (this.isNeedRoute()) {
+                sUrl = sUrl.replace(this.getPrefixUrl('/'), '/'); // 자동으로  prefix 붙은 영역을 제거해준다.
+            }
+            return sUrl;
+        },
+        getPrefixUrl: function (sUrl)
+        {
+            if (this.isNeedRoute() === false) {
+                return sUrl;
+            }
+            if (sUrl.indexOf('/') !== 0) {
+                return sUrl;
+            }
+            if (sUrl.match(/^\/{2,}/) !== null) {
+                return sUrl;
+            }
+
+            var iCachedPosition = this.aFromList.indexOf(sUrl);
+            if (iCachedPosition > -1) {
+                return this.aToList[iCachedPosition];
+            }
+
+            var bTailSlash = (sCleanUrl !== '/' && sUrl.substr(-1) === '/');
+            var sCleanUrl = this.getCleanUrl(sUrl);
+            var aPrefixPart = CAFE24.ROUTE.path.prefix.split('/');
+            var aUrlPart = sCleanUrl.split('/');
+            var bMatched = true;
+            var sReturnUrl = sCleanUrl;
+            if (aUrlPart.length < aPrefixPart.length) {
+                bMatched = false;
+            } else {
+                for (var i = 0; i < aPrefixPart.length ; i++) {
+                    if (aPrefixPart[i] != aUrlPart[i]) {
+                        bMatched = false;
+                        break;
+                    }
+                }
+            }
+            if (bMatched === false) {
+                if (sCleanUrl == '/') {
+                    sReturnUrl = CAFE24.ROUTE.path.prefix;
+                } else {
+                    sReturnUrl = CAFE24.ROUTE.path.prefix +  sCleanUrl;
+                }
+                sReturnUrl = bTailSlash ? sReturnUrl : this.rtrim(sReturnUrl, '/')
+                this.aFromList.push(sUrl);
+                this.aToList.push(sReturnUrl);
+            }
+            return sReturnUrl;
+        },
+        /**
+         * document.location.pathname 이 필요할 경우 사용한다.
+         * @returns {*}
+         */
+        getPathName: function()
+        {
+            if (typeof CAFE24.ROUTE.path.result == 'undefined') {
+                return document.location.pathname;
+            }
+            return CAFE24.ROUTE.path.result;
+        },
+        rtrim: function (str, chr)
+        {
+            var rgxtrim = (!chr) ? new RegExp('\\s+$') : new RegExp(chr+'+$');
+            return str.replace(rgxtrim, '');
+        },
+        getShopNo: function ()
+        {
+            return CAFE24.ROUTE.shop_no;
+        },
+        getSkinCode: function ()
+        {
+            return CAFE24.ROUTE.skin_code;
+        },
+        getLanguageCode: function ()
+        {
+            return CAFE24.ROUTE.language_code;
+        },
+        getMobile: function ()
+        {
+            return CAFE24.ROUTE.is_mobile;
+        },
+        getIsMobile: function ()
+        {
+            return CAFE24.ROUTE.is_mobile || CAFE24.ROUTE.skin_code.match(/^mobile[0-9]*$/);
+        },
+        getCleanUrl: function (sUrl)
+        {
+            if (sUrl === '/') {
+                return sUrl;
+            }
+
+            var aUrl = sUrl.split('/');
+            aUrl.shift();
+
+            if (aUrl.length < 1) {
+                return sUrl;
+            }
+
+            // 현재 4 depth 까지 미리보기 기능이 구현되어있음
+            var iPos = 0;
+            var bFind = false;
+            for (var i = 0; i < aUrl.length ; i++) {
+                bFind = false;
+                for (var iSub = iPos, iSubCount = this.aCleanFilter.length; iSub < iSubCount ; iSub++) {
+                    if (aUrl[i].match(this.aCleanFilter[iSub]) !== null) {
+                        bFind = true;
+                        iPos = iSub + 1;
+                        aUrl.splice(i, 1);
+                        i--; // aUrl 을 삭제해 주었으니 검색 조건을 -1 제거하여 초기화 한다. 다음 for i++ 로 증감 조회됨.
+                        break;
+                    }
+                }
+                if (bFind === false) {
+                    break;
+                }
+            }
+            return '/' + aUrl.join('/');
+        },
+        getIsEasyUrl : function ()
+        {
+            return !window.location.pathname.match(/^[\w\/\-\.]+(php|html|htm)$/i);
+        }
+    };
+    EC_ROUTE.init();
+}
+</script>
+<meta name="path_role" content="MAIN" />
+<meta name="author" content="ALLFRESH" />
+<meta name="description" content="대한민국 1호 과일 소믈리에가 1999년부터의 노하우로 직접 구성합니다. 
+감사 선물부터 격식있는 자리를 위한 명품 과일까지, 모든 순간을 빛내드립니다." />
+<meta name="keywords" content="ALLFRESH" /><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<!--카페24PRO 로케일 팝업 스크립트-->
+<script src="https://procomms.cafe24.com/web/upload/cafe24pro_locale_popup.js"></script>
+   <!-- bing-->
+<meta name="msvalidate.01" content="4E4150C518593D920CF64119F22E19F8"/>    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    
+	<meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+    <!-- PG크로스브라우징필수내용 -->
+    <meta http-equiv="Cache-Control" content="no-cache"/>
+    <meta http-equiv="Expires" content="0"/>
+    <meta http-equiv="Pragma" content="no-cache"/>
+    <!-- // PG크로스브라우징필수내용 -->
+
+        <!-- 해당 CSS는 쇼핑몰 전체 페이지에 영향을 줍니다. 삭제와 수정에 주의해주세요. -->
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+  	
+    
+
+
+	<!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Raleway:400,600,700%7COpen+Sans:400,400i,700" rel="stylesheet"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
+
+	<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"/>
+	<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"/>
+
+	<link rel="stylesheet" href="https://unicons.iconscout.com/release/v3.0.3/css/solid.css"/>
+	<link rel="stylesheet" href="https://unicons.iconscout.com/release/v3.0.3/css/line.css"/>
+
+
+
+    
+
+	
+
+	
+
+
+
+    <link rel="stylesheet" href="/layout/basic/css/bootstrap.css"/>
+	<link rel="stylesheet" href="/layout/basic/css/magnific-popup.css"/>
+	<link rel="stylesheet" href="/layout/basic/css/font-icons.css"/>
+    <link rel="stylesheet" href="/layout/basic/css/font.css"/>
+    <link rel="stylesheet" href="/layout/basic/css/sliders.css"/>
+	<link rel="stylesheet" href="/layout/basic/css/style.css"/>
+
+
+
+    <!-- 스마트디자인에서는 JQuery 1.4.4 버전이 내장되어있습니다. 추가로 호출하면 충돌이 생길 수 있습니다. -->
+    
+    
+    
+
+
+
+	  
+
+
+
+
+<!-- Google Site Verification -->
+<meta name="google-site-verification" content="1zkKcLsmQ-knBh4h8u0Eh8LpyWaAPybb7OVEjv88drs" />
+<!-- Google Site Verification -->
+<link rel="canonical" href="https://allfresh.co.kr/" />
+<link rel="alternate" hreflang="x-default" href="https://allfresh.co.kr/" /><link rel="alternate" hreflang="ko-KR" href="https://allfresh.co.kr/" />
+<meta property="og:url" content="https://allfresh.co.kr/" />
+<meta property="og:title" content="과일선물 전문 올프레쉬ㅣ기업 · 단체 맞춤 고품격 과일" />
+<meta property="og:description" content="대한민국 1호 과일 소믈리에가 1999년부터의 노하우로 직접 구성합니다.  감사 선물부터 격식있는 자리를 위한 명품 과일까지, 모든 순간을 빛내드립니다." />
+<meta property="og:site_name" content="ALLFRESH" />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/share-image-1-109f4aa87fda84165d9c83c65469d197.png" />
+<meta name="google-site-verification" content="QJxIXHDwaNbdKNBGIacM-Z_Kbs77tD8XMPBVidW7jwE" />
+<meta name="naver-site-verification" content="5a787501879ffc7c05a944ad806196cee75129f7" />
+<link rel="shortcut icon" href="https://ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/favicon-fa526da80dbad452869805b80cb111f0.ico" />
+<script type="text/javascript" src="//wcs.naver.net/wcslog.js"></script>
+<script type="text/javascript">var CAFE24API = { instance: [], MALL_ID: 'allfresh777', SHOP_NO: 1, basicAuthKeys: {}, setBasicAuthKey: function (clientId, basicAuthKey) { if (typeof basicAuthKey !== 'string') { return; } if (clientId) { CAFE24API.basicAuthKeys[clientId] = basicAuthKey; } else { CAFE24API.basicAuthKeys['default'] = basicAuthKey; } }, init: function (appInfo) { if (typeof appInfo == 'object') { if (appInfo.hasOwnProperty('client_id')) { var appKey = appInfo.client_id; } } else { var appKey = appInfo; } if (appKey) { if (!this.instance[appKey]) { CAFE24API.clientId = appKey; if (appInfo.hasOwnProperty('version')) { CAFE24API.version = appInfo.version; } else { if (CAFE24API.hasOwnProperty('version')) { delete CAFE24API.version; } } var copyObject = CAFE24API.constructor(); for (var attr in CAFE24API) { if (CAFE24API.hasOwnProperty(attr)) { copyObject[attr] = CAFE24API[attr]; } } this.instance[appKey] = copyObject; } return this.instance[appKey]; } }, initializeXhr: function () { try { return new XMLHttpRequest(); } catch (error) { return new window.ActiveXObject('Microsoft.XMLHTTP'); } }, fullPath: function (url) { return 'https://allfresh777.cafe24api.com' + url; }, getLoginProvider: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'customer')) { return; } callback(null, { 'login': CAPP_ASYNC_METHODS.AppCommon.getLoginProvider() }); }, getCustomerProvider: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'customer')) { return; } callback(null, { 'login': CAPP_ASYNC_METHODS.AppCommon.getCustomerProvider() }); }, getMemberID: function (callback) { if (!CAPP_ASYNC_METHODS.IS_LOGIN) { callback(null); } else { callback(CAPP_ASYNC_METHODS.AppCommon.getMemberID()); } }, getEncryptedMemberId: function (client_id, callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'customer')) { return; } callback(null, CAPP_ASYNC_METHODS.AppCommon.getEncryptedMemberId(client_id)); }, getMemberInfo: function (callback) { callback({ 'id': CAPP_ASYNC_METHODS.AppCommon.getMemberInfo() }); }, getCustomerIDInfo: function (callback) { if (!CAFE24API.__scopeErr(callback, 'application')) { return; } callback(null, { 'id': CAPP_ASYNC_METHODS.AppCommon.getCustomerIDInfo() }); }, getCustomerInfo: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'customer')) { return; } callback(null, { 'customer': CAPP_ASYNC_METHODS.AppCommon.getCustomerInfo() }); }, getMileageInfo: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'customer')) { return; } callback(null, { 'mileage': CAPP_ASYNC_METHODS.AppCommon.getMileageInfo() }); }, getPointInfo: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'customer')) { return; } callback(null, { 'point': CAPP_ASYNC_METHODS.AppCommon.getPointInfo() }); }, getDepositInfo: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'customer')) { return; } callback(null, { 'deposit': CAPP_ASYNC_METHODS.AppCommon.getDepositInfo() }); }, getCreditInfo: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'customer')) { return; } callback(null, { 'credit': CAPP_ASYNC_METHODS.AppCommon.getCreditInfo() }); }, getCartList: function (callback) { if (!CAFE24API.__scopeErr(callback, 'personal')) { return; } CAPP_ASYNC_METHODS.AppCommon.getCartList().then(function (data) { callback(null, { 'carts': data }); }); }, getCartInfo: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'personal')) { return; } callback(null, { 'cart': CAPP_ASYNC_METHODS.AppCommon.getCartInfo() }); }, getCartItemList: function (callback) { if (!CAFE24API.__scopeErr(callback, 'order')) { return; } callback(null, { 'items': CAPP_ASYNC_METHODS.AppCommon.getCartItemList() }); }, getCartCount: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'personal')) { return; } callback(null, CAPP_ASYNC_METHODS.AppCommon.getCartCount()); }, getCouponCount: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'promotion')) { return; } callback(null, CAPP_ASYNC_METHODS.AppCommon.getCouponCount()); }, getWishCount: function (callback) { if (!CAFE24API.__chkValidSessionScope(callback, 'personal')) { return; } callback(null, CAPP_ASYNC_METHODS.AppCommon.getWishCount()); }, getShopInfo: function (callback) { if (!CAFE24API.__scopeErr(callback, 'store')) { return; } callback(null, { 'shop': CAPP_ASYNC_METHODS.AppCommon.getShopInfo() }); }, addCurrentProductToCart: function (mall_id, time, app_key, member_id, hmac, callback) { if (!CAFE24API.__scopeErr(callback, 'order')) { return; } CAPP_ASYNC_METHODS.AppCommon.addCurrentProductToCart(mall_id, time, app_key, member_id, hmac).then(function (data) { callback(null, { 'cart': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error('422'), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, precreateOrder: function (mall_id, time, app_key, member_id, hmac, callback) { if (!CAFE24API.__scopeErr(callback, 'order')) { return; } CAPP_ASYNC_METHODS.AppCommon.precreateOrder(mall_id, time, app_key, member_id, hmac).then(function (data) { callback(null, { 'order': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error('422'), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, calculatePayment: function (mall_id, request_time, app_key, member_id, request_data_json, hmac, callback) { if (!CAFE24API.__scopeErr(callback, 'order')) { return; } CAPP_ASYNC_METHODS.AppCommon.calculatePayment(mall_id, request_time, app_key, member_id, request_data_json, hmac).then(function (data) { callback(null, { 'expected_payment': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error('422'), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, precreateOrderV2: function (mall_id, time, app_key, member_id, request_data_json, hmac, callback) { if (!CAFE24API.__scopeErr(callback, 'order')) { return; } CAPP_ASYNC_METHODS.AppCommon.precreateOrderV2(mall_id, time, app_key, member_id, request_data_json, hmac).then(function (data) { callback(null, { 'order': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error('422'), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, getOrderItemList: function (start_date, end_date, order_status, page, count, order_id, callback) { if (!CAFE24API.__scopeErr(callback, 'order')) { return; } CAPP_ASYNC_METHODS.AppCommon.getOrderItemList(start_date, end_date, order_status, page, count, order_id).then(function (data) { callback(null, { 'items': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error(422), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, getOrderDetailInfo: function (shop_no, order_id, callback) { if (!CAFE24API.__scopeErr(callback, 'order')) { return; } CAPP_ASYNC_METHODS.AppCommon.getOrderDetailInfo(shop_no, order_id).then(function (data) { callback(null, { 'orders': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error(422), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, getClaimableItemList: function (order_id, customer_service_type, callback) { if (!CAFE24API.__scopeErr(callback, 'order')) { return; } CAPP_ASYNC_METHODS.AppCommon.getClaimableItemList(order_id, customer_service_type).then(function (data) { callback(null, { 'items': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error(422), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, emptyCart: function (basket_shipping_type, callback) { if (!CAFE24API.__scopeErr(callback, 'personal')) { return; } CAPP_ASYNC_METHODS.AppCommon.emptyCart(basket_shipping_type).then(function (data) { callback(null, { 'result': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error(422), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, deleteCartItems: function (basket_shipping_type, product_list, callback) { if (!CAFE24API.__scopeErr(callback, 'personal')) { return; } CAPP_ASYNC_METHODS.AppCommon.deleteCartItems(basket_shipping_type, product_list).then(function (data) { callback(null, { 'result': data }); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error(422), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }); }, addCart: function (basket_type, prepaid_shipping_fee, product_list, callback) { if (!CAFE24API.__scopeErr(callback, 'personal')) { return; } CAPP_ASYNC_METHODS.AppCommon.addCart(basket_type, prepaid_shipping_fee, product_list).then(function (data) { callback(null, data); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error(422), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }) }, addBundleProductsCart: function (basket_type, prepaid_shipping_fee, product_list, callback) { if (!CAFE24API.__scopeErr(callback, 'personal')) { return; } CAPP_ASYNC_METHODS.AppCommon.addBundleProductsCart(basket_type, prepaid_shipping_fee, product_list).then(function (data) { callback(null, data); }).catch(function (data) { if (data) { callback(new Error('422'), { 'error': { code: data.code, message: data.message } }); } else { callback(new Error(422), { 'error': { code: 422, message: 'This sdk is not available on the current page' } }); } }) }, get: function (url, callback) { return CAFE24API.complete('GET', url, this, null, callback); }, post: function (url, params, callback) { return CAFE24API.complete('POST', url, this, params, callback); }, put: function (url, params, callback) { return CAFE24API.complete('PUT', url, this, params, callback); }, delete: function (url, callback) { return CAFE24API.complete('DELETE', url, this, null, callback); }, complete: function (method, url, obj, params, callback) { var xhr = CAFE24API.sendXhr(method, url, obj, params, callback); xhr.onreadystatechange = function () { if (xhr.readyState === XMLHttpRequest.DONE) { if (xhr.status >= 200 && xhr.status <= 208) { callback(null, JSON.parse(xhr.responseText)); } else { callback(new Error(xhr.status), JSON.parse(xhr.responseText)); } } }; }, sendXhr: function (method, url, obj, params, callback) { if (method !== 'POST') { var url = obj.fullPath(url); } var xhr = obj.initializeXhr(); var queryVars = {}; if (obj.clientId) queryVars['cafe24_app_key'] = obj.clientId; if (obj.version) queryVars['cafe24_api_version'] = obj.version; var basicAuthKey = CAFE24API.basicAuthKeys[obj.clientId] || CAFE24API.basicAuthKeys['default']; if (basicAuthKey && basicAuthKey.length > 0) { queryVars['authorization'] = 'Basic ' + basicAuthKey; } if (params === null) { var seperator = url.indexOf('?') == -1 ? '?' : '&'; var queryString = []; for (var key in queryVars) { queryString.push(key + '=' + encodeURIComponent(queryVars[key])); } if (queryString.length > 0) { url = url + seperator + queryString.join('&'); } } xhr.open(method, url, true); if (typeof params == 'object' && params !== null) { xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded; charset=utf-8'); for (var key in queryVars) { params[key] = queryVars[key]; } params = 'formData=' + JSON.stringify(params); } xhr.send(params || null); return xhr; }, __sessionErr: function (callback) { callback(new Error(403), { 'error': { code: 403, message: 'Failed to get session. Only available when log in.' } }); }, __scopeErr: function (callback, scope) { if (typeof CAFE24.APPSCRIPT_SDK_DATA != "undefined" && jQuery.inArray(scope, CAFE24.APPSCRIPT_SDK_DATA) > -1) { return true; } callback(new Error(403), { 'error': { code: 403, message: 'You do not have the necessary authority(scope) to use the SDK.' } }); }, __chkValidSessionScope: function (callback, scope) { if (!CAPP_ASYNC_METHODS.IS_LOGIN) { CAFE24API.__sessionErr(callback); return false; } if (!CAFE24API.__scopeErr(callback, scope)) { return false; } return true; } }; </script>
+<script type="text/javascript">
+window.CAFE24 = window.CAFE24 || {};
+CAFE24.MANIFEST_CACHE_REVISION = '2603181464';
+CAFE24.getDeprecatedNamespace = function(sDeprecatedNamespace, sSupersededNamespace) {
+var sNamespace = sSupersededNamespace 
+? sSupersededNamespace 
+: sDeprecatedNamespace.replace(/^EC_/, '');
+return CAFE24[sNamespace];
+}
+CAFE24.FRONT_LANGUAGE_CODE = "ko_KR";
+CAFE24.MOBILE = false;
+CAFE24.MOBILE_DEVICE = false;
+CAFE24.MOBILE_USE = false;
+var EC_MOBILE = CAFE24.MOBILE;
+var EC_MOBILE_DEVICE = CAFE24.MOBILE_DEVICE;
+var EC_MOBILE_USE = CAFE24.MOBILE_USE;
+CAFE24.SKIN_CODE = "skin1";
+CAFE24.FRONT_EXTERNAL_SCRIPT_VARIABLE_DATA = {"common_member_id_crypt":""};
+var EC_FRONT_EXTERNAL_SCRIPT_VARIABLE_DATA = CAFE24.getDeprecatedNamespace('EC_FRONT_EXTERNAL_SCRIPT_VARIABLE_DATA');
+CAFE24.SDE_SHOP_NUM = 1;CAFE24.SHOP = {getLanguage : function() { return "ko_KR"; },getSkinLanguageCode : function() { return "ko_KR"; },getCurrency : function() { return "KRW"; },getFlagCode : function() { return "KR"; },getTimezone: function() { return "Asia/Seoul" },getDateFormat: function() { return "Y-m-d" },isMultiShop : function() { return true; },isDefaultShop : function() { return true; },isDefaultLanguageShop : function(sLanguageCode) { return SHOP.isDefaultShop() && SHOP.isLanguageShop(sLanguageCode); },isKR : function() { return true; },isUS : function() { return false; },isJP : function() { return false; },isCN : function() { return false; },isTW : function() { return false; },isES : function() { return false; },isPT : function() { return false; },isVN : function() { return false; },isPH : function() { return false; },getCountryAndLangMap : function() { return {
+"KR": "ko_KR",
+"US": "en_US",
+"JP": "ja_JP",
+"CN": "zh_CN",
+"TW": "zh_TW",
+"VN": "vi_VN",
+"PH": "en_PH"
+}},isLanguageShop : function(sLanguageCode) { return sLanguageCode === "ko_KR"; },getDefaultShopNo : function() { return 1; },getProductVer : function() { return 2; },isSDE : function() { return true; },isMode : function() {return false; },getModeName : function() {return false; },isMobileAdmin : function() {return false; },isNewProMode : function() {return true; },isExperienceMall : function() { return false; },isDcollection : function() {return false; },isYoutubeShops : function() {return false; },getYtShopsShopNo : function() {return 2; },isFrontDesignChangeRequired : function() {return false;},isG2G : function() {return false; },getAdminID : function() {return ''},getMallID : function() {return 'allfresh777'},getCurrencyFormat : function(sPriceTxt, bIsNumberFormat) { 
+sPriceTxt = String(sPriceTxt);
+var aCurrencySymbol = ["","\uc6d0",false];
+if (typeof CAFE24.SHOP_PRICE !== 'undefined' && isNaN(sPriceTxt.replace(/[,]/gi, '')) === false && bIsNumberFormat === true) {
+// bIsNumberFormat 사용하려면 Ui(':libUipackCurrency')->plugin('Currency') 화폐 라이브러리 추가 필요
+sPriceTxt = CAFE24.SHOP_PRICE.toShopPrice(sPriceTxt.replace(/[,]/gi, ''), true, CAFE24.SDE_SHOP_NUM);
+}
+try {
+var sPlusMinusSign = (sPriceTxt.toString()).substr(0, 1);
+if (sPlusMinusSign === '-' || sPlusMinusSign === '+') {
+sPriceTxt = (sPriceTxt.toString()).substr(1);
+return sPlusMinusSign + aCurrencySymbol[0] + sPriceTxt + aCurrencySymbol[1];
+} else {
+return aCurrencySymbol[0] + sPriceTxt + aCurrencySymbol[1];
+}
+} catch (e) {
+return aCurrencySymbol[0] + sPriceTxt + aCurrencySymbol[1];
+}
+}};CAFE24.CURRENCY_INFO = {getOriginReferenceCurrency : function() {return 'USD'},getCurrencyList : function(sCurrencyCode) { var aCurrencyList = {"JPY":{"currency_symbol":"&yen;","decimal_place":0,"round_method_type":"F"},"VND":{"currency_symbol":"&#8363;","decimal_place":0,"round_method_type":"F"},"PHP":{"currency_symbol":"&#8369;","decimal_place":2,"round_method_type":"R"},"USD":{"currency_symbol":"$","decimal_place":2,"round_method_type":"R"},"CNY":{"currency_symbol":"&yen;","decimal_place":2,"round_method_type":"R"},"TWD":{"currency_symbol":"NT$","decimal_place":0,"round_method_type":"F"},"EUR":{"currency_symbol":"\u20ac","decimal_place":2,"round_method_type":"R"},"BRL":{"currency_symbol":"R$","decimal_place":2,"round_method_type":"R"},"AUD":{"currency_symbol":"A$","decimal_place":2,"round_method_type":"R"},"BHD":{"currency_symbol":".&#1583;.&#1576;","decimal_place":3,"round_method_type":"R"},"BDT":{"currency_symbol":"&#2547;","decimal_place":2,"round_method_type":"R"},"GBP":{"currency_symbol":"&pound;","decimal_place":2,"round_method_type":"R"},"CAD":{"currency_symbol":"C$","decimal_place":2,"round_method_type":"R"},"CZK":{"currency_symbol":"K&#269;","decimal_place":2,"round_method_type":"R"},"DKK":{"currency_symbol":"kr","decimal_place":2,"round_method_type":"R"},"HKD":{"currency_symbol":"HK$","decimal_place":2,"round_method_type":"R"},"HUF":{"currency_symbol":"Ft","decimal_place":2,"round_method_type":"R"},"INR":{"currency_symbol":"&#8377;","decimal_place":2,"round_method_type":"R"},"IDR":{"currency_symbol":"Rp","decimal_place":0,"round_method_type":"F"},"ILS":{"currency_symbol":"&#8362;","decimal_place":2,"round_method_type":"R"},"JOD":{"currency_symbol":" &#1583;&#1610;&#1606;&#1575;&#1585;","decimal_place":3,"round_method_type":"R"},"KWD":{"currency_symbol":"&#1583;&#1610;&#1606;&#1575;&#1585;","decimal_place":3,"round_method_type":"R"},"MYR":{"currency_symbol":"RM","decimal_place":2,"round_method_type":"R"},"MXN":{"currency_symbol":"Mex$","decimal_place":2,"round_method_type":"R"},"NZD":{"currency_symbol":"NZ$","decimal_place":2,"round_method_type":"R"},"NOK":{"currency_symbol":"kr","decimal_place":2,"round_method_type":"R"},"PKR":{"currency_symbol":"&#8360;","decimal_place":2,"round_method_type":"R"},"PLN":{"currency_symbol":"z\u0142","decimal_place":2,"round_method_type":"R"},"RUB":{"currency_symbol":"\u0440\u0443\u0431","decimal_place":2,"round_method_type":"R"},"SAR":{"currency_symbol":"&#65020;","decimal_place":2,"round_method_type":"R"},"SGD":{"currency_symbol":"S$","decimal_place":2,"round_method_type":"R"},"ZAR":{"currency_symbol":"R","decimal_place":2,"round_method_type":"R"},"SEK":{"currency_symbol":"kr","decimal_place":2,"round_method_type":"R"},"CHF":{"currency_symbol":"Fr","decimal_place":2,"round_method_type":"R"},"THB":{"currency_symbol":"&#3647;","decimal_place":2,"round_method_type":"R"},"TRY":{"currency_symbol":"TL","decimal_place":2,"round_method_type":"R"},"AED":{"currency_symbol":"&#1601;&#1604;&#1587;","decimal_place":2,"round_method_type":"R"}}; return aCurrencyList[sCurrencyCode] },isUseReferenceCurrency : function() {return false }};CAFE24.COMMON_UTIL = {convertSslForString : function(sString) { return sString.replace(/http:/gi, '');},convertSslForHtml : function(sHtml) { return sHtml.replace(/((?:src|href)\s*=\s*['"])http:(\/\/(?:[a-z0-9\-_\.]+)\/)/ig, '$1$2');},getProtocol : function() { return 'https'; },moveSsl : function() { if (CAFE24.COMMON_UTIL.getProtocol() === 'http') { var oLocation = jQuery(window.location); var sUrl = 'https://' + oLocation.attr('host') + oLocation.attr('pathname') + oLocation.attr('search'); window.location.replace(sUrl); } },setEcCookie : function(sKey, sValue, iExpire) {var exdate = new Date();exdate.setDate(exdate.getDate() + iExpire);var setValue = escape(sValue) + "; domain=." + CAFE24.GLOBAL_INFO.getBaseDomain() + "; path=/;expires=" + exdate.toUTCString();document.cookie = sKey + "=" + setValue;}};CAFE24.SHOP_LIB_INFO = {getBankInfo : function() { 
+var oBankInfo = "";
+$.ajax({
+type: "GET",
+url: "/exec/front/Shop/Bankinfo",
+dataType: "json",
+async: false,
+success: function(oResponse) {
+oBankInfo = oResponse;
+}
+});
+return oBankInfo; }};            var EC_SDE_SHOP_NUM = CAFE24.SDE_SHOP_NUM;
+var SHOP = CAFE24.getDeprecatedNamespace('SHOP');
+var EC_COMMON_UTIL = CAFE24.getDeprecatedNamespace('EC_COMMON_UTIL');
+var EC_SHOP_LIB_INFO = CAFE24.getDeprecatedNamespace('EC_SHOP_LIB_INFO');
+var EC_CURRENCY_INFO = CAFE24.getDeprecatedNamespace('EC_CURRENCY_INFO');
+CAFE24.ROOT_DOMAIN = "cafe24.com";
+CAFE24.API_DOMAIN = "cafe24api.com";
+CAFE24.GLOBAL_INFO = (function() {
+var oData = {"base_domain":"allfresh777.cafe24.com","root_domain":"cafe24.com","api_domain":"cafe24api.com","is_global":false,"is_global_standard":false,"country_code":"KR","language_code":"ko_KR","admin_language_code":"ko_KR","front_language_code":"ko_KR"};
+return {
+getBaseDomain: function() {
+return oData['base_domain'];
+},
+getRootDomain: function() {
+return oData['root_domain'];
+},
+getApiDomain: function() {
+return oData['api_domain'];
+},
+isGlobal: function() {
+return oData['is_global'];
+},
+isGlobalStandard: function() {
+return oData['is_global_standard'];
+},
+getCountryCode: function() {
+return oData['country_code'];
+},
+getLanguageCode: function() {
+return oData['language_code'];
+},
+getAdminLanguageCode: function() {
+return oData['admin_language_code'];
+},
+getFrontLanguageCode: function() {
+return oData['front_language_code'];
+}
+};
+})();
+var EC_ROOT_DOMAIN = CAFE24.ROOT_DOMAIN;
+var EC_API_DOMAIN = CAFE24.API_DOMAIN;
+var EC_TRANSLATE_LOG_STATUS = CAFE24.TRANSLATE_LOG_STATUS;
+var EC_GLOBAL_INFO = CAFE24.getDeprecatedNamespace('EC_GLOBAL_INFO');
+CAFE24.AVAILABLE_LANGUAGE = ["ko_KR","zh_CN","en_US","zh_TW","es_ES","pt_PT","vi_VN","ja_JP","en_PH"];
+CAFE24.AVAILABLE_LANGUAGE_CODES = {"ko_KR":"KOR","zh_CN":"CHN","en_US":"ENG","zh_TW":"TWN","es_ES":"ESP","pt_PT":"PRT","vi_VN":"VNM","ja_JP":"JPN","en_PH":"PHL"};
+var EC_AVAILABLE_LANGUAGE = CAFE24.AVAILABLE_LANGUAGE;
+var EC_AVAILABLE_LANGUAGE_CODES = CAFE24.AVAILABLE_LANGUAGE_CODES;
+CAFE24.GLOBAL_PRODUCT_LANGUAGE_CODES = {  
+sClearanceCategoryCode: '',
+sManualLink: '//support.cafe24.com/hc/ko/articles/7739013909529',
+sHsCodePopupLink: 'https://www.wcotradetools.org/en/harmonized-system',
+aCustomRegex: '"PHL" : "^[0-9]{8}[A-Z]?$"',
+sCountryCodeData: 'kor',
+sEnglishExampleURlForGlobal: '',
+aReverseAddressCountryCode: ["VNM","PHL"],
+aSizeGuideCountryAlign: '["US","UK","EU","KR","JP","CN"]',
+aIsSupportTran: ["ja_JP","zh_CN","zh_TW","en_US","vi_VN","en_PH","pt_PT","es_ES"]
+};
+var EC_GLOBAL_PRODUCT_LANGUAGE_CODES = CAFE24.getDeprecatedNamespace('EC_GLOBAL_PRODUCT_LANGUAGE_CODES');
+CAFE24.GLOBAL_ORDER_LANGUAGE_CODES = {
+aModifyOrderLanguage: {"KR":"ko_KR","JP":"ja_JP","CN":"zh_CN","TW":"zh_TW","VN":"vi_VN","PH":"en_PH"},
+aUseIdCardKeyCountry: ["CN","TW"],
+aLanguageWithCountryCode: {"zh_CN":["CN","CHN","HK","HNK"],"ja_JP":["JP","JPN"],"zh_TW":["TW","TWN"],"ko_KR":["KR","KOR"],"vi_VN":["VN","VNM"],"en_PH":["PH","PHL"]},
+aCheckDisplayRequiredIcon: ["ja_JP","zh_CN","zh_TW","en_US","vi_VN","en_PH"],
+aSetReceiverName: {"zh_CN":{"sCountry":"CN","bUseLastName":true},"zh_TW":{"sCountry":"TW","bUseLastName":false},"ja_JP":{"sCountry":"JP","bUseLastName":true}},
+aSetDeferPaymethodLanguage: {"ja_JP":"\uc77c\ubcf8","zh_CN":"\uc911\uad6d"},
+aUseDeferPaymethod: ["ja_JP","zh_CN"],
+aCheckShippingCompanyAndPaymethod: ["ja_JP","zh_CN"],
+aSetDeferPaymethodLanguageForShipping: {"ja_JP":"\u65e5\u672c","zh_CN":"\uc911\uad6d"},
+aCheckStoreByPaymethod: ["ja_JP","zh_CN"],
+aCheckIsEmailRequiredForJs: ["en_US","zh_CN","zh_TW","ja_JP","vi_VN","en_PH"],
+aSetIdCardKeyCountryLanguage: {"CN":"\uc911\uad6d\uc758","TW":"\ub300\ub9cc\uc758"},
+aReverseGlobalAddress: ["en_PH","vi_VN","PHL","VNM","VN","PH"],
+aNoCheckZipCode: ["KOR","JPN"],
+aNotPostCodeAPICountryList: ["en_US","es_ES","pt_PT","en_PH"],
+aEnableSearchExchangeAddr: ["KR","JP","CN","VN","TW","PH"],
+aDuplicatedBaseAddr: ["TW","JP"],
+aReverseAddressCountryCode: ["VN","PH"],
+aCheckZipCode: ["PHL","en_PH","PH"]
+};
+var EC_GLOBAL_ORDER_LANGUAGE_CODES = CAFE24.getDeprecatedNamespace('EC_GLOBAL_ORDER_LANGUAGE_CODES');
+CAFE24.GLOBAL_MEMBER_LANGUAGE_CODES = {  
+sAdminWebEditorLanguageCode: 'ko' ,
+oNotAvailDecimalPointLanguages: ["ko_KR","ja_JP","zh_TW","vi_VN"],
+oAddressCountryCode: {"KOR":"ko_KR","JPN":"ja_JP","CHN":"zh_CN","TWN":"zh_TW","VNM":"vi_VN","PHL":"en_PH"},
+};
+var EC_GLOBAL_MEMBER_LANGUAGE_CODES = CAFE24.getDeprecatedNamespace('EC_GLOBAL_MEMBER_LANGUAGE_CODES');
+CAFE24.GLOBAL_BOARD_LANGUAGE_CODES = {  
+bUseLegacyBoard: true
+};
+var EC_GLOBAL_BOARD_LANGUAGE_CODES = CAFE24.getDeprecatedNamespace('EC_GLOBAL_BOARD_LANGUAGE_CODES');
+CAFE24.GLOBAL_MALL_LANGUAGE_CODES = {
+oDesign: {
+oDesignAddReplaceInfo: {"group_id":"SKIN.ADD.ADMIN.DESIGNDETAIL","replacement":{"KR":"KOREAN","US":"ENGLISH","JP":"JAPANESE","CN":"SIMPLIFIED.CHINESE","TW":"TRADITIONAL.CHINESE","ES":"SPANISH","PT":"PORTUGUESE","PH":"ENGLISH"}},
+oDesignDetailLanguageCountryMap: {"KR":"ko_KR","JP":"ja_JP","CN":"zh_CN","TW":"zh_TW","US":"en_US","ES":"es_ES","PT":"pt_PT","PH":"en_PH"},
+oSmartDesignSwitchTipLink: {"edibot":{"img":"\/\/img.echosting.cafe24.com\/smartAdmin\/img\/design\/img_editor_dnd.png","link":"\/\/ecsupport.cafe24.com\/board\/free\/list.html?board_act=list&board_no=12&category_no=9&cate_no=9"},"smart":{"img":"\/\/img.echosting.cafe24.com\/smartAdmin\/img\/design\/ko_KR\/img_editor_smart.png","link":"\/\/sdsupport.cafe24.com"}},
+oSmartDesignDecoShopList: ["ko_KR","ja_JP","zh_CN","en_US","zh_TW","es_ES","pt_PT"],
+oSmartDesignDecoMultilingual: {"list":{"ko_KR":"KOREAN","en_US":"ENGLISH","ja_JP":"JAPANESE","zh_CN":"SIMPLIFIED.CHINESE","zh_TW":"TRADITIONAL.CHINESE","es_ES":"SPANISH","pt_PT":"PORTUGUESE","vi_VN":"VIETNAMESE"},"group_id":"EDITOR.LAYER.EDITING.DECO"},
+aSmartDesignModuleShopList: ["ko_KR","ja_JP","zh_CN","en_US","zh_TW","es_ES","pt_PT"]
+},
+oStore: {
+oMultiShopCurrencyInfo: {"en_US":{"currency":"USD"},"zh_CN":{"currency":"USD","sub_currency":"CNY"},"ja_JP":{"currency":"JPY"},"zh_TW":{"currency":"TWD"},"es_ES":{"currency":"EUR"},"pt_PT":{"currency":"EUR"},"ko_KR":{"currency":"KRW"},"vi_VN":{"currency":"VND"},"en_PH":{"currency":"PHP"}},
+oBrowserRedirectLanguage: {"ko":{"primary":"ko_KR","secondary":"en_US"},"en":{"detail":{"en-ph":{"primary":"en_PH","secondary":"en_US"},"en-us":{"primary":"en_US","secondary":"es_ES"},"default":{"primary":"en_US","secondary":"es_ES"}}},"ja":{"primary":"ja_JP","secondary":"en_US"},"zh":{"detail":{"zh-cn":{"primary":"zh_CN","secondary":"en_US"},"zh-tw":{"primary":"zh_TW","secondary":"zh_CN"},"default":{"primary":"en_US","secondary":"ko_KR"}}},"es":{"primary":"es_ES","secondary":"en_US"},"pt":{"primary":"pt_PT","secondary":"en_US"},"vi":{"primary":"vi_VN","secondary":"en_US"},"default":{"primary":"en_US","secondary":"ko_KR"}},
+aChangeableLanguages: ["en_US","ja_JP","ko_KR"],
+aNoZipCodeLanguage: ["ko_KR","ja_JP"]
+},
+oMobile: {
+sSmartWebAppFaqUrl: "https://support.cafe24.com/hc/ko/articles/8466586607641",
+sAmpFaqUrl: "https://ecsupport.cafe24.com/board/free/read.html?no=1864&board_no=5&category_no=13&cate_no=13&category_no=13&category_no=13",
+},
+oPromotion: {
+bQrCodeAvailable: true,
+bSnsMarketingAvailable: true
+},
+oShippingReverseAddressLanguage: ["vi_VN","en_PH"] ,
+oGlobalStandardSwitchHelpCodeLink: {"SH.DS":{"link":"\/\/serviceguide.cafe24shop.com\/en_PH\/SH.DS.html"},"PR.DS":{"link":"\/\/serviceguide.cafe24shop.com\/en_PH\/PR.DS.html"},"OR.SM.BO":{"link":"\/\/serviceguide.cafe24shop.com\/en_PH\/OR.SM.BO.html"},"DE.DS":{"link":"\/\/serviceguide.cafe24shop.com\/en_PH\/DE.DS.html"},"MB.DS":{"link":"\/\/serviceguide.cafe24shop.com\/en_PH\/MB.DS.html"},"PM.DS":{"link":"\/\/serviceguide.cafe24shop.com\/en_PH\/PM.DS.html"}},
+getAdminMainLocaleLanguage: function(sSkinLocaleCode) {
+var oLocaleData = [];
+var locale = "";
+var shopLangName = "";
+if (sSkinLocaleCode == "US") {
+locale = "en_US";
+shopLangName = "ENGLISH";
+} else if (sSkinLocaleCode == "JP") {
+locale = "ja_JP";
+shopLangName = "JAPANESE";
+} else if (sSkinLocaleCode == "CN") {
+locale = "zh_CN";
+shopLangName = "SIMPLIFIED.CHINESE";
+} else if (sSkinLocaleCode == "TW") {
+locale = "zh_TW";
+shopLangName = "TRADITIONAL.CHINESE";
+} else if (sSkinLocaleCode == "ES") {
+locale = "es_ES";
+shopLangName = "SPANISH";
+} else if (sSkinLocaleCode == "PT") {
+locale = "pt_PT";
+shopLangName = "PORTUGUESE";
+} else if (sSkinLocaleCode == "VN") {
+locale = "vi_VN";
+shopLangName = "VIETNAMESE";
+} else if(sSkinLocaleCode == "PH") {
+locale = "en_PH";
+shopLangName = "ENGLISH.PH";
+}
+oLocaleData["locale"] = locale;
+oLocaleData["shopLangName"] = shopLangName;
+return oLocaleData;
+}
+};
+var EC_GLOBAL_MALL_LANGUAGE_CODES = CAFE24.getDeprecatedNamespace('EC_GLOBAL_MALL_LANGUAGE_CODES');
+CAFE24.GLOBAL_DATETIME_INFO = {
+oConstants: {"STANDARD_DATE_REGEX":"\/([12]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01]))\/","IN_ZONE":"inZone","OUT_ZONE":"outZone","IN_FORMAT":"inFormat","OUT_FORMAT":"outFormat","IN_DATE_FORMAT":"inDateFormat","IN_TIME_FORMAT":"inTimeFormat","OUT_DATE_FORMAT":"outDateFormat","OUT_TIME_FORMAT":"outTimeFormat","IN_FORMAT_DATE_ONLY":1,"IN_FORMAT_TIME_ONLY":2,"IN_FORMAT_ALL":3,"OUT_FORMAT_DATE_ONLY":1,"OUT_FORMAT_TIME_ONLY":2,"OUT_FORMAT_ALL":3,"DATE_ONLY":"YYYY-MM-DD","TIME_ONLY":"HH:mm:ss","FULL_TIME":"YYYY-MM-DD HH:mm:ss","ISO_8601":"YYYY-MM-DD[T]HH:mm:ssZ","YEAR_ONLY":"YYYY","MONTH_ONLY":"MM","DAY_ONLY":"DD","WEEK_ONLY":"e","TIME_H_I_ONLY":"HH:mm","TIME_HOUR_ONLY":"HH","TIME_MINUTE_ONLY":"mm","POSTGRE_FULL_TIME":"YYYY-MM-DD HH24:MI:SS","POSTGRE_TIME_ONLY":" HH24:MI:SS","MICRO_SECOND_ONLY":"u","SEOUL":"Asia\/Seoul","TOKYO":"Asia\/Tokyo","SHANGHAI":"Asia\/Shanghai","TAIPEI":"Asia\/Taipei","HANOI":"Asia\/Bangkok","LOS_ANGELES":"America\/Los_Angeles","LISBON":"Europe\/Lisbon","MADRID":"Europe\/Madrid","SINGAPORE":"Asia\/Singapore","UTC":"Etc\/UTC","MAX_DATETIME":"9999-12-31 23:59:59"},
+oOptions: {"inZone":"Asia\/Seoul","inFormat":"YYYY-MM-DD HH:mm:ss","inDateFormat":"YYYY-MM-DD","inTimeFormat":"HH:mm:ss","outZone":"Asia\/Seoul","outFormat":"YYYY-MM-DD HH:mm:ss","outDateFormat":"YYYY-MM-DD","outTimeFormat":"HH:mm:ss"},
+oPolicies: {"shop":{"outZone":"Asia\/Seoul","outFormat":"YYYY-MM-DD HH:mm:ss","outDateFormat":"YYYY-MM-DD","outTimeFormat":"HH:mm:ss"}},
+sOverrideTimezone: '',
+sMomentNamespace: 'EC_GLOBAL_MOMENT'
+};
+CAFE24.FRONT_JS_CONFIG_MANAGE = {"sSmartBannerScriptUrl":"https:\/\/app4you.cafe24.com\/SmartBanner\/tunnel\/scriptTags?vs=1563164396689206","sMallId":"allfresh777","sDefaultAppDomain":"https:\/\/app4you.cafe24.com","sWebLogOffFlag":"F","cdnUrl":"https:\/\/ecimg.cafe24img.com\/pg1293b82084384039\/allfresh777"};
+var EC_FRONT_JS_CONFIG_MANAGE = CAFE24.getDeprecatedNamespace('EC_FRONT_JS_CONFIG_MANAGE');
+CAFE24.FRONT_JS_CONFIG_MEMBER = {"sAuthUrl":"https:\/\/ipin-ec.cafe24.com\/certify\/v1\/?action=auth"};
+var EC_FRONT_JS_CONFIG_MEMBER = CAFE24.getDeprecatedNamespace('EC_FRONT_JS_CONFIG_MEMBER');
+CAFE24.FRONT_JS_CONFIG_SHOP = {"aProductPurchaseInfo_868":{"bIsSuccess":true,"sMessage":"","bReplaceLoginPage":false,"bIsDisplayPurchaseButton":true},"aProductPurchaseInfo_864":{"bIsSuccess":true,"sMessage":"","bReplaceLoginPage":false,"bIsDisplayPurchaseButton":true},"aProductPurchaseInfo_866":{"bIsSuccess":true,"sMessage":"","bReplaceLoginPage":false,"bIsDisplayPurchaseButton":true},"aProductPurchaseInfo_869":{"bIsSuccess":true,"sMessage":"","bReplaceLoginPage":false,"bIsDisplayPurchaseButton":true},"aProductPurchaseInfo_752":{"bIsSuccess":true,"sMessage":"","bReplaceLoginPage":false,"bIsDisplayPurchaseButton":true},"aProductPurchaseInfo_753":{"bIsSuccess":true,"sMessage":"","bReplaceLoginPage":false,"bIsDisplayPurchaseButton":true},"aProductPurchaseInfo_791":{"bIsSuccess":true,"sMessage":"","bReplaceLoginPage":false,"bIsDisplayPurchaseButton":true},"aProductPurchaseInfo_627":{"bIsSuccess":true,"sMessage":"","bReplaceLoginPage":false,"bIsDisplayPurchaseButton":true}};
+var EC_FRONT_JS_CONFIG_SHOP = CAFE24.getDeprecatedNamespace('EC_FRONT_JS_CONFIG_SHOP');
+typeof window.CAFE24 === "undefined" && (window.CAFE24 = {});
+CAFE24.BOARD = {"config_4":{"board_no":4,"use_block":"F","use_report":"F"}};
+CAFE24.FRONTEND = {"FW_MANIFEST_CACHE_REVISION":2603181464,"IS_WEB_VIEW":"F"};
+CAFE24.ROUTE = {"is_mobile":false,"is_need_route":false,"language_code":"ZZ","path":{"origin":"\/","result":"\/","prefix":""},"shop_no":0,"skin_code":"default","support_language_list":{"ar":"ar_EG","ar-EG":"ar_EG","de":"de_DE","de-DE":"de_DE","en":"en_US","en-IN":"en_IN","en-PH":"en_PH","en-US":"en_US","es":"es_ES","es-ES":"es_ES","hi":"hi_IN","hi-IN":"hi_IN","id":"id_ID","id-ID":"id_ID","it":"it_IT","it-IT":"it_IT","ja":"ja_JP","ja-JP":"ja_JP","ko":"ko_KR","ko-KR":"ko_KR","ms":"ms_MY","ms-MY":"ms_MY","pt":"pt_PT","pt-PT":"pt_PT","ru":"ru_RU","ru-RU":"ru_RU","th":"th_TH","th-TH":"th_TH","tr":"tr_TR","tr-TR":"tr_TR","vi":"vi_VN","vi-VN":"vi_VN","zh":"zh_CN","zh-CN":"zh_CN","zh-HK":"zh_HK","zh-MO":"zh_MO","zh-SG":"zh_SG","zh-TW":"zh_TW"}};
+</script>
+<link rel="stylesheet" type="text/css" href="//img.echosting.cafe24.com/editors/froala/css/froala_style_ec.min.css?vs=2603181464" charset="utf-8"/>
+
+<link rel="stylesheet" type="text/css" href="/ind-script/optimizer.php?filename=nZJBCgIxDEX3Q7eeIyp6AQUPoHiAtBO1TNqUtAW9vaMbnYWi3X7y_gshcJFAsFgqJJWzYgClLFUdgcsZTiqxgJMQJJoxmMEv8-S6LFyLl9hZuTaCtZRWKeONtA0taJkaUUkd-0idxRg_-jElOFwkwf69bfdsG2f66srv-ijVZ_b9aAv-07HYWzj6hG6YOrfIFHtUWJm1mcOJsSTvhm-LbwS1n7aMsbGP2FgWN7TCSkm0_Ee__vIO&type=css&k=7b02cdae0ebf51f860d140058e5907788bc96115&t=1773882303"  /><link rel="stylesheet" type="text/css" href="/ind-script/optimizer_user.php?filename=tdVLbsQgDAbg_aTbnsOdVc7QdU9AwAlWAaPYtJ3bl9F0TlB7x0sfkvVjIHNFwLgMwVMglLKfKHldV-hjKxSXrLWAJFwSCh0N5JPaFUq48VDYglCEKAKRa-X2MoevYGU-FmxNjJc5wcsgH3cbqtZ1eNoaNje4oBPNXJS6D56xOMk7l-QUEP7xgeep6CP3k9OI6oWn97azEx4OakGNsx1YbEH5po6nTwnmxj_pu1ZnAgo-b6ljvmnJ3D8y9U7tMPYjt69JELduHGkZ2yJ6s-52d1YzVuugpfRg3672sMfvOl2rKPw1HRAMZ8wpaLjLvw&type=css&k=327f84fb920e6fc3b959c288ac22667216563d93&t=1727053304&user=T"  />
+<style type="text/css">
+
+</style>
+<title>과일선물 전문 올프레쉬ㅣ기업 · 단체 맞춤 고품격 과일</title></head>
+<body id="wrap_main" class="relative grid-1440">
+ <!-- Preloader -->
+  <!-- <div class="loader-mask">
+    <div class="loader">
+      <div></div>
+      <div></div>
+    </div>
+  </div> -->
+
+<div id="skipNavigation">
+    <p><a href="#category">전체상품목록 바로가기</a></p>
+    <p><a href="#contents">본문 바로가기</a></p>
+</div>
+
+
+<main class="main-wrapper">
+
+    <header class="nav-type-7">
+      <nav class="navbar navbar-static-top">
+        <div class="navigation" id="sticky-nav">
+          <div class="container relative">
+            <div class="row flex-parent">
+              <div class="navbar-header flex-child">
+                <!-- Logo -->
+                <div class="logo-container">
+                  <div class="logo-wrap">
+                    <a href="/"><img class="logo-dark" src="/SkinImg/img/logo.png" alt="logo"/></a>
+                  </div>
+                </div>
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
+                  <span class="sr-only">Toggle navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+              </div> <!-- end navbar-header -->
+              <div class="nav-wrap flex-child">
+                <div class="collapse navbar-collapse text-center" id="navbar-collapse">
+
+
+                
+
+                  <ul class="xans-element- xans-layout xans-layout-category nav navbar-nav "><li class="hidden-lg hidden-md sm-icon">
+						<div class="xans-element- xans-layout xans-layout-statelogoff "><a href="/member/login.html">로그인</a>
+<a href="/member/join.html">회원가입</a>
+<a href="/order/basket.html" class="relative">장바구니 <span class="bcon displaynone EC-Layout_Basket-count-display"><span class="EC-Layout-Basket-count"></span></span></a>
+<!-- <a href="/myshop/order/list.html">주문조회</a> -->
+<a href="/myshop/index.html">마이페이지</a>
+</div>
+
+								
+                    </li>
+<li class="dropdown xans-record-">
+<a href="/category/과일-선물세트/24/">
+						과일 선물세트</a>
+						<i class="fa fa-angle-down dropdown-trigger"></i>
+					</li>
+<li class="dropdown xans-record-">
+<a href="/category/제철-과일/42/">
+						제철 과일</a>
+						<i class="fa fa-angle-down dropdown-trigger"></i>
+					</li>
+<li class="dropdown xans-record-">
+<a href="/category/정기구독/26/">
+						정기구독</a>
+						<i class="fa fa-angle-down dropdown-trigger"></i>
+					</li>
+<li class="dropdown xans-record-">
+<a href="/category/기업-구매-전용/83/">
+						기업 구매 전용</a>
+						<i class="fa fa-angle-down dropdown-trigger"></i>
+					</li>
+<li class="dropdown">
+                      <a href="#">브랜드스토리</a>
+                      <i class="fa fa-angle-down dropdown-trigger"></i>
+                      <ul class="dropdown-menu">
+                        <li><a href="/shopinfo/company.html">올프레쉬 스토리</a></li>
+                        <li><a href="/shopinfo/history.html">HISTORY</a></li>
+						<li><a href="/shopinfo/farm.html">올프레쉬 파트너</a></li>
+						<li><a href="/shopinfo/location.html">오시는길</a></li>
+                      </ul>
+                    </li>
+<!-- end company -->
+<!-- <li>
+                      <a href="/board/gallery/list.html?board_no=8">STORY</a>
+                    </li>
+                    <li>
+                      <a href="/board/gallery/list.html?board_no=2">EVENT</a>
+                    </li>
+                    <li>
+                      <a href="/board/gallery/list.html?board_no=4">REVIEW</a>
+                    </li> -->
+<li class="dropdown">
+                      <a href="#">고객센터</a>
+                      <i class="fa fa-angle-down dropdown-trigger"></i>
+                      <ul class="dropdown-menu">
+                        <li><a href="/board/free/list.html?board_no=1">공지사항</a></li>
+                        <li><a href="/board/free/list.html?board_no=3">FAQ</a></li>
+                      </ul>
+                    </li>
+</ul>
+ <!-- end menu -->
+                </div> <!-- end collapse -->
+              </div> <!-- end col -->
+              <!-- Nav right -->
+              <div class="flex-child flex-right hidden-sm hidden-xs" style="text-align:right">
+                <div class="nav-icon-wrap">
+					 <div class="xans-element- xans-layout xans-layout-statelogoff "><a href="/member/login.html">로그인</a>
+<a href="/member/join.html" class="hidden-lg hidden-md">회원가입</a>
+<a href="/order/basket.html" class="relative">장바구니 <span class="bcon displaynone EC-Layout_Basket-count-display"><span class="EC-Layout-Basket-count"></span></span></a>
+<!-- <a href="/myshop/order/list.html">주문조회</a> -->
+<a href="/myshop/index.html">마이페이지</a>
+</div>
+
+									   
+
+                </div>
+              </div>
+          
+            </div> <!-- end row -->
+          </div> <!-- end container -->
+        </div> <!-- end navigation -->
+      </nav> <!-- end navbar -->
+    </header>
+
+
+
+
+
+<div id="wrap">
+    <div id="container">
+        <div id="contents" class="">
+            
+
+
+<!--PC 슬라이드 시작-->
+<style>
+ 
+   @font-face {
+    font-family: 'Aritaburi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/Arita-buri-SemiBold.woff') format('woff');
+    font-weight: normal;
+    font-display: swap;
+} 
+.main_btn {background-color: transparent; font-size: 24px; font-family: 'Aritaburi'; font-weight: 500; padding:0; margin-left: -10px;}
+    @media(max-width: 768px) { 
+        .main_btn {font-size: 16px}
+    }
+        @media(max-width: 450px) { 
+        .main_btn {font-size: 12px}
+    }
+  
+</style>
+<div id="slider-single" class="flickity-slider-wrap sm-hidden" data-autoplay="true" data-arrows="true" data-slidedots="false">
+    
+            <div class="gallery-cell work-item">
+              <div class="work-container">
+                <div class="work-img">
+                  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/category/editor/2025/03/19/ada3520031b446a30379cd9080c5bce8.jpg" alt=""/>  
+				   <div class="v-txtbox">
+					<h2 class="en-font"></h2>
+					<p class="txtbox01 en-font"></p>
+					<a href="https://www.allfresh.co.kr/category/%EB%9D%BC%EC%9D%B8%EB%B3%84-%EC%84%A0%EB%AC%BC%EC%84%B8%ED%8A%B8/24/" class="main_btn">베이직 상품보기</a>
+				 </div>
+                </div>
+              </div> 
+            </div> <!-- end work-item -->
+    
+                <div class="gallery-cell work-item">
+              <div class="work-container">
+                <div class="work-img">
+                  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/category/editor/2025/03/19/781550d99bf4e6969e792ab721bd96cd.jpg" alt=""/>  
+				   <div class="v-txtbox">
+					<h2 class="en-font"></h2>
+					<p class="txtbox01 en-font"></p>
+					<a href="https://www.allfresh.co.kr/category/%EB%9D%BC%EC%9D%B8%EB%B3%84-%EC%84%A0%EB%AC%BC%EC%84%B8%ED%8A%B8/24/" class="main_btn">프리미엄 상품보기</a>
+				 </div>
+                </div>
+              </div> 
+            </div> <!-- end work-item -->
+
+        <div class="gallery-cell work-item">
+              <div class="work-container">
+                <div class="work-img">
+                 <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/category/editor/2025/03/19/47a24deac9bb2c300d011604a00b1076.jpg" alt=""/> 
+				  <div class="v-txtbox">
+					<h2 class="en-font"></h2>
+					<p class="txtbox01 en-font "></p>
+					<a href="https://www.allfresh.co.kr/product/list.html?cate_no=53" class="main_btn">제철과일 상품보기</a>
+				 </div>
+                </div>
+              </div> 
+            </div> <!-- end work-item -->
+    
+
+</div>
+<!--PC 슬라이드 끝-->
+<!--모바일 슬라이드 시작-->
+<div id="slider-single2" class="flickity-slider-wrap md-hidden sm-slider" data-autoplay="true" data-arrows="true" data-slidedots="false">
+    
+                <div class="gallery-cell work-item">
+              <div class="work-container">
+                <div class="work-img">
+                  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/category/editor/2025/03/19/781550d99bf4e6969e792ab721bd96cd.jpg" alt=""/>  
+				   <div class="v-txtbox">
+					<h2 class="en-font"></h2>
+					<p class="txtbox01 en-font"></p>
+					<a href="https://www.allfresh.co.kr/category/%EB%9D%BC%EC%9D%B8%EB%B3%84-%EC%84%A0%EB%AC%BC%EC%84%B8%ED%8A%B8/24/" class="main_btn">프리미엄 상품보기</a>
+				 </div>
+                </div>
+              </div> 
+            </div> <!-- end work-item -->
+    
+                <div class="gallery-cell work-item">
+              <div class="work-container">
+                <div class="work-img">
+                  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/category/editor/2025/03/19/ada3520031b446a30379cd9080c5bce8.jpg" alt=""/>   
+				   <div class="v-txtbox">
+					<h2 class="en-font"></h2>
+					<p class="txtbox01 en-font"></p>
+					<a href="https://www.allfresh.co.kr/category/%EB%9D%BC%EC%9D%B8%EB%B3%84-%EC%84%A0%EB%AC%BC%EC%84%B8%ED%8A%B8/24/" class="main_btn">베이직 상품보기</a>
+				 </div>
+                </div>
+              </div> 
+            </div> <!-- end work-item -->
+
+    
+        <div class="gallery-cell work-item">
+              <div class="work-container">
+                <div class="work-img">
+                 <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/category/editor/2025/03/19/47a24deac9bb2c300d011604a00b1076.jpg" alt=""/> 
+				  <div class="v-txtbox">
+					<h2 class="en-font"></h2>
+					<p class="txtbox01 en-font "></p>
+					<a href="https://www.allfresh.co.kr/product/list.html?cate_no=53" class="main_btn">제철과일 상품보기</a>
+				 </div>
+                </div>
+              </div> 
+            </div> <!-- end work-item -->
+
+</div>
+<!--모바일 슬라이드 끝-->
+
+
+<style>
+.ec-base-product .prdList > li {min-height:290px;}
+</style>
+<section class="section-wrap1">
+	<div class="container">
+		<div class="" style="overflow:hidden;position:relative;">
+			<div class="tab-product">
+				<div class="swiper-pagination"></div>
+
+				<div class="swiper-wrapper">
+					<div class="swiper-slide">
+						<div class="xans-element- xans-product xans-product-listmain-3 xans-product-listmain xans-product-3 ec-base-product"><ul class="prdList grid4">
+							<!--
+								$count = 4
+									※ 상품진열갯수를 설정하는 변수입니다. 설정하지 않을 경우, 최대 200개의 상품이 진열 됩니다.
+									※ 진열된 상품이 많으면, 쇼핑몰에 부하가 발생할 수 있습니다.
+							-->
+							
+
+								<li id="anchorBoxId_868" class="col-md-3 col-xs-6 xans-record-">
+
+									<div class="thumbnail">
+
+										<div class="prdImg hoverimg">
+											<a href="/product/올프레쉬-프리미엄-과일선물세트-9종-에코그린-2호대저토마토-천혜향-외-22kg-이상/868/category/1/display/4/?icid=MAIN.product_listmain_3" name="anchorBoxName_868"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/medium/20260305/a0a1c8a3b1566e212f11ab62d93d809f.jpg" class="hover-img" id="eListPrdImage868_4" alt="프리미엄 과일선물세트 8종 이미지"/></a>
+											<div class="list-icon">												
+												<div class="button">
+												   <!-- <div class="likeButton displaynone"><button type="button"> <strong></strong></button></div> -->
+												   <div class="option"></div>  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231002035800.png"  class="icon_img ec-product-listwishicon" alt="관심상품 등록 전" productno="868" categoryno="1" icon_status="off" login_status="T" individual-set="F" />  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231001516600.png"  onClick="CAPP_SHOP_NEW_PRODUCT_OPTIONSELECT.selectOptionCommon(868,  1, 'basket', '')" alt="장바구니 담기" class="ec-admin-icon cart" />											   </div>
+											</div>
+										</div>
+
+									</div>
+									<div class="description">
+										 <script>
+											var a = 100-(51100*100/53800);
+											var a_rate = Math.round(a);
+											if(a_rate > 0){              
+											document.write("<div class='salerate'>"+a_rate +"%" +"</div>");  
+											}                                      
+										</script>
+										<strong class="name"><a href="/product/올프레쉬-프리미엄-과일선물세트-9종-에코그린-2호대저토마토-천혜향-외-22kg-이상/868/category/1/display/4/?icid=MAIN.product_listmain_3" class=""><span class="title displaynone"><span class="" style="font-size:12px;color:#555555;">상품명</span> :</span> <span class="" style="font-size:12px;color:#555555;">[올프레쉬] 프리미엄 과일선물세트 9종 에코그린 2호(대저토마토, 천혜향 외) 2.2kg 이상</span></a></strong>
+										<ul class="xans-element- xans-product xans-product-listitem-3 xans-product-listitem xans-product-3 spec listspec"><li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#555555;">소비자가</span> :</strong> <span class="" style="font-size:12px;color:#555555;text-decoration:line-through;">53,800원</span></li>
+<li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">판매가</span> :</strong> <span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">51,100원</span><span id="span_product_tax_type_text" style=""> </span></li>
+</ul>
+									</div>
+								</li> <!-- end work-item -->
+								<li id="anchorBoxId_864" class="col-md-3 col-xs-6 xans-record-">
+									<div class="thumbnail">
+										<div class="prdImg hoverimg">
+											<a href="/product/올프레쉬-프리미엄-과일선물세트-8종-3호대저토마토-천혜향-외-2kg-이상/864/category/1/display/4/?icid=MAIN.product_listmain_3" name="anchorBoxName_864"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/medium/20260305/4e81282a2447a06d09ab9381084c90ab.jpg" class="hover-img" id="eListPrdImage864_4" alt="프리미엄 과일선물세트 - 샤인머스캣과 감귤 포함"/></a>
+											<div class="list-icon">
+												
+												<div class="button">
+												   <div class="likeButton displaynone"><button type="button"> <strong></strong></button></div>
+												   <div class="option"></div> <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231001516600.png"  onClick="CAPP_SHOP_NEW_PRODUCT_OPTIONSELECT.selectOptionCommon(864,  1, 'basket', '')" alt="장바구니 담기" class="ec-admin-icon cart" />  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231002035800.png"  class="icon_img ec-product-listwishicon" alt="관심상품 등록 전" productno="864" categoryno="1" icon_status="off" login_status="T" individual-set="F" />											   </div>
+											</div>
+										</div>
+									</div>
+									<div class="description">
+										 <script>
+											var a = 100-(50160*100/52800);
+											var a_rate = Math.round(a);
+											if(a_rate > 0){              
+											document.write("<div class='salerate'>"+a_rate +"%" +"</div>");  
+											}                                      
+										</script>
+										<strong class="name"><a href="/product/올프레쉬-프리미엄-과일선물세트-8종-3호대저토마토-천혜향-외-2kg-이상/864/category/1/display/4/?icid=MAIN.product_listmain_3" class=""><span class="title displaynone"><span class="" style="font-size:12px;color:#555555;">상품명</span> :</span> <span class="" style="font-size:12px;color:#555555;">[올프레쉬] 프리미엄 과일선물세트 8종 3호(대저토마토, 천혜향 외) 2kg 이상</span></a></strong>
+										<ul class="xans-element- xans-product xans-product-listitem-3 xans-product-listitem xans-product-3 spec listspec"><li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#555555;">소비자가</span> :</strong> <span class="" style="font-size:12px;color:#555555;text-decoration:line-through;">52,800원</span></li>
+<li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">판매가</span> :</strong> <span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">50,160원</span><span id="span_product_tax_type_text" style=""> </span></li>
+</ul>
+									</div>
+								</li>
+<li id="anchorBoxId_866" class="col-md-3 col-xs-6 xans-record-">
+									<div class="thumbnail">
+										<div class="prdImg hoverimg">
+											<a href="/product/올프레쉬-프리미엄-과일선물세트-15종-에코그린-5호대저토마토-천혜향-외-45kg-이상/866/category/1/display/4/?icid=MAIN.product_listmain_3" name="anchorBoxName_866"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/medium/20260305/f0ced59ce910875514bad17332aba6dc.jpg" class="hover-img" id="eListPrdImage866_4" alt="프리미엄 과일선물세트 - 멜론, 샤인머스캣 포함 이미지"/></a>
+											<div class="list-icon">
+												
+												<div class="button">
+												   <div class="likeButton displaynone"><button type="button"> <strong></strong></button></div>
+												   <div class="option"></div> <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231001516600.png"  onClick="CAPP_SHOP_NEW_PRODUCT_OPTIONSELECT.selectOptionCommon(866,  1, 'basket', '')" alt="장바구니 담기" class="ec-admin-icon cart" />  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231002035800.png"  class="icon_img ec-product-listwishicon" alt="관심상품 등록 전" productno="866" categoryno="1" icon_status="off" login_status="T" individual-set="F" />											   </div>
+											</div>
+										</div>
+									</div>
+									<div class="description">
+										 <script>
+											var a = 100-(122550*100/129000);
+											var a_rate = Math.round(a);
+											if(a_rate > 0){              
+											document.write("<div class='salerate'>"+a_rate +"%" +"</div>");  
+											}                                      
+										</script>
+										<strong class="name"><a href="/product/올프레쉬-프리미엄-과일선물세트-15종-에코그린-5호대저토마토-천혜향-외-45kg-이상/866/category/1/display/4/?icid=MAIN.product_listmain_3" class=""><span class="title displaynone"><span class="" style="font-size:12px;color:#555555;">상품명</span> :</span> <span class="" style="font-size:12px;color:#555555;">[올프레쉬] 프리미엄 과일선물세트 15종 에코그린 5호(대저토마토, 천혜향 외) 4.5kg 이상</span></a></strong>
+										<ul class="xans-element- xans-product xans-product-listitem-3 xans-product-listitem xans-product-3 spec listspec"><li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#555555;">소비자가</span> :</strong> <span class="" style="font-size:12px;color:#555555;text-decoration:line-through;">129,000원</span></li>
+<li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">판매가</span> :</strong> <span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">122,550원</span><span id="span_product_tax_type_text" style=""> </span></li>
+</ul>
+									</div>
+								</li>
+<li id="anchorBoxId_869" class="col-md-3 col-xs-6 xans-record-">
+									<div class="thumbnail">
+										<div class="prdImg hoverimg">
+											<a href="/product/올프레쉬-프리미엄-과일선물세트-11종-에코그린-4호대저토마토-천혜향-외-35kg-이상/869/category/1/display/4/?icid=MAIN.product_listmain_3" name="anchorBoxName_869"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/medium/20260305/55857027367bc150fa7f921756c2a520.png" class="hover-img" id="eListPrdImage869_4" alt="프리미엄 과일선물세트 6종 - 멜론, 샤인머스캣 포함 제품 이미지"/></a>
+											<div class="list-icon">
+												
+												<div class="button">
+												   <div class="likeButton displaynone"><button type="button"> <strong></strong></button></div>
+												   <div class="option"></div> <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231001516600.png"  onClick="CAPP_SHOP_NEW_PRODUCT_OPTIONSELECT.selectOptionCommon(869,  1, 'basket', '')" alt="장바구니 담기" class="ec-admin-icon cart" />  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231002035800.png"  class="icon_img ec-product-listwishicon" alt="관심상품 등록 전" productno="869" categoryno="1" icon_status="off" login_status="T" individual-set="F" />											   </div>
+											</div>
+										</div>
+									</div>
+									<div class="description">
+										 <script>
+											var a = 100-(94050*100/99000);
+											var a_rate = Math.round(a);
+											if(a_rate > 0){              
+											document.write("<div class='salerate'>"+a_rate +"%" +"</div>");  
+											}                                      
+										</script>
+										<strong class="name"><a href="/product/올프레쉬-프리미엄-과일선물세트-11종-에코그린-4호대저토마토-천혜향-외-35kg-이상/869/category/1/display/4/?icid=MAIN.product_listmain_3" class=""><span class="title displaynone"><span class="" style="font-size:12px;color:#555555;">상품명</span> :</span> <span class="" style="font-size:12px;color:#555555;">[올프레쉬] 프리미엄 과일선물세트 11종 에코그린 4호(대저토마토, 천혜향 외) 3.5kg 이상</span></a></strong>
+										<ul class="xans-element- xans-product xans-product-listitem-3 xans-product-listitem xans-product-3 spec listspec"><li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#555555;">소비자가</span> :</strong> <span class="" style="font-size:12px;color:#555555;text-decoration:line-through;">99,000원</span></li>
+<li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">판매가</span> :</strong> <span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">94,050원</span><span id="span_product_tax_type_text" style=""> </span></li>
+</ul>
+									</div>
+								</li>
+ <!-- end work-item -->
+
+							</ul>
+</div>
+<!-- md's pick-->
+					</div>
+					<div class="swiper-slide">
+						<div class="xans-element- xans-product xans-product-listmain-4 xans-product-listmain xans-product-4 ec-base-product"><ul class="prdList grid4">
+							<!--
+								$count = 4
+									※ 상품진열갯수를 설정하는 변수입니다. 설정하지 않을 경우, 최대 200개의 상품이 진열 됩니다.
+									※ 진열된 상품이 많으면, 쇼핑몰에 부하가 발생할 수 있습니다.
+							-->
+							
+
+								<li id="anchorBoxId_752" class="col-md-3 col-xs-6 xans-record-">
+
+									<div class="thumbnail">
+
+										<div class="prdImg hoverimg">
+											<a href="/product/올프레쉬-프리미엄-지리산-금실-딸기-특12-20입-420g/752/category/1/display/5/?icid=MAIN.product_listmain_4" name="anchorBoxName_752"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/medium/20251205/5f79be146f6e9bc77ccee930fc51c685.png" class="hover-img" id="eListPrdImage752_5" alt="금실딸기"/></a>
+											<div class="list-icon">												
+												<div class="button">
+												   <!-- <div class="likeButton displaynone"><button type="button"> <strong></strong></button></div> -->
+												   <div class="option"></div>  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231002035800.png"  class="icon_img ec-product-listwishicon" alt="관심상품 등록 전" productno="752" categoryno="1" icon_status="off" login_status="T" individual-set="F" />  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231001516600.png"  onClick="category_add_basket('752','1', '5', 'A0000', false, '1', 'P0000BCY', 'A', 'F', '0');" alt="장바구니 담기" class="ec-admin-icon cart" />											   </div>
+											</div>
+										</div>
+
+									</div>
+									<div class="description">
+										 <script>
+											var a = 100-(19200*100/26000);
+											var a_rate = Math.round(a);
+											if(a_rate > 0){              
+											document.write("<div class='salerate'>"+a_rate +"%" +"</div>");  
+											}                                      
+										</script>
+										<strong class="name"><a href="/product/올프레쉬-프리미엄-지리산-금실-딸기-특12-20입-420g/752/category/1/display/5/?icid=MAIN.product_listmain_4" class=""><span class="title displaynone"><span class="" style="font-size:12px;color:#555555;">상품명</span> :</span> <span class="" style="font-size:12px;color:#555555;">[올프레쉬] 프리미엄 지리산 금실 딸기 (특/12-20입) 420g</span></a></strong>
+										<ul class="xans-element- xans-product xans-product-listitem-4 xans-product-listitem xans-product-4 spec listspec"><li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#555555;">소비자가</span> :</strong> <span class="" style="font-size:12px;color:#555555;text-decoration:line-through;">26,000원</span></li>
+<li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">판매가</span> :</strong> <span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">19,200원</span><span id="span_product_tax_type_text" style=""> </span></li>
+</ul>
+									</div>
+								</li> <!-- end work-item -->
+								<li id="anchorBoxId_753" class="col-md-3 col-xs-6 xans-record-">
+									<div class="thumbnail">
+										<div class="prdImg hoverimg">
+											<a href="/product/올프레쉬-프리미엄-지리산-금실-딸기-특24-40입-840g/753/category/1/display/5/?icid=MAIN.product_listmain_4" name="anchorBoxName_753"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/medium/20251205/41d7ec95cbc8274f74c981c41dbd0a17.png" class="hover-img" id="eListPrdImage753_5" alt="금실딸기"/></a>
+											<div class="list-icon">
+												
+												<div class="button">
+												   <div class="likeButton displaynone"><button type="button"> <strong></strong></button></div>
+												   <div class="option"></div> <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231001516600.png"  onClick="category_add_basket('753','1', '5', 'A0000', false, '1', 'P0000BCZ', 'A', 'F', '0');" alt="장바구니 담기" class="ec-admin-icon cart" />  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231002035800.png"  class="icon_img ec-product-listwishicon" alt="관심상품 등록 전" productno="753" categoryno="1" icon_status="off" login_status="T" individual-set="F" />											   </div>
+											</div>
+										</div>
+									</div>
+									<div class="description">
+										 <script>
+											var a = 100-(33800*100/45000);
+											var a_rate = Math.round(a);
+											if(a_rate > 0){              
+											document.write("<div class='salerate'>"+a_rate +"%" +"</div>");  
+											}                                      
+										</script>
+										<strong class="name"><a href="/product/올프레쉬-프리미엄-지리산-금실-딸기-특24-40입-840g/753/category/1/display/5/?icid=MAIN.product_listmain_4" class=""><span class="title displaynone"><span class="" style="font-size:12px;color:#555555;">상품명</span> :</span> <span class="" style="font-size:12px;color:#555555;">[올프레쉬] 프리미엄 지리산 금실 딸기 (특/24-40입) 840g</span></a></strong>
+										<ul class="xans-element- xans-product xans-product-listitem-4 xans-product-listitem xans-product-4 spec listspec"><li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#555555;">소비자가</span> :</strong> <span class="" style="font-size:12px;color:#555555;text-decoration:line-through;">45,000원</span></li>
+<li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">판매가</span> :</strong> <span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">33,800원</span><span id="span_product_tax_type_text" style=""> </span></li>
+</ul>
+									</div>
+								</li>
+<li id="anchorBoxId_791" class="col-md-3 col-xs-6 xans-record-">
+									<div class="thumbnail">
+										<div class="prdImg hoverimg">
+											<a href="/product/올프레쉬-프리미엄-대저-짭짤이-토마토-2kg/791/category/1/display/5/?icid=MAIN.product_listmain_4" name="anchorBoxName_791"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/medium/20250520/a38322bae58d9e5208884e21f3ef0452.png" class="hover-img" id="eListPrdImage791_5" alt="[올프레쉬] 프리미엄 대저 짭짤이 토마토 2kg"/></a>
+											<div class="list-icon">
+												
+												<div class="button">
+												   <div class="likeButton displaynone"><button type="button"> <strong></strong></button></div>
+												   <div class="option"></div> <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231001516600.png"  onClick="category_add_basket('791','1', '5', 'A0000', false, '1', 'P0000BEL', 'A', 'F', '0');" alt="장바구니 담기" class="ec-admin-icon cart" />  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231002035800.png"  class="icon_img ec-product-listwishicon" alt="관심상품 등록 전" productno="791" categoryno="1" icon_status="off" login_status="T" individual-set="F" />											   </div>
+											</div>
+										</div>
+									</div>
+									<div class="description">
+										 <script>
+											var a = 100-(43900*100/48800);
+											var a_rate = Math.round(a);
+											if(a_rate > 0){              
+											document.write("<div class='salerate'>"+a_rate +"%" +"</div>");  
+											}                                      
+										</script>
+										<strong class="name"><a href="/product/올프레쉬-프리미엄-대저-짭짤이-토마토-2kg/791/category/1/display/5/?icid=MAIN.product_listmain_4" class=""><span class="title displaynone"><span class="" style="font-size:12px;color:#555555;">상품명</span> :</span> <span class="" style="font-size:12px;color:#555555;">[올프레쉬] 프리미엄 대저 짭짤이 토마토 2kg</span></a></strong>
+										<ul class="xans-element- xans-product xans-product-listitem-4 xans-product-listitem xans-product-4 spec listspec"><li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#555555;">소비자가</span> :</strong> <span class="" style="font-size:12px;color:#555555;text-decoration:line-through;">48,800원</span></li>
+<li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">판매가</span> :</strong> <span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">43,900원</span><span id="span_product_tax_type_text" style=""> </span></li>
+</ul>
+									</div>
+								</li>
+<li id="anchorBoxId_627" class="col-md-3 col-xs-6 xans-record-">
+									<div class="thumbnail">
+										<div class="prdImg hoverimg">
+											<a href="/product/올프레쉬-프리미엄-태국망고4입애플망고3입/627/category/1/display/5/?icid=MAIN.product_listmain_4" name="anchorBoxName_627"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/medium/shop1_7a48fd8e95773a7ffac04114c8ffa384.png" class="hover-img" id="eListPrdImage627_5" alt="[올프레쉬] 프리미엄 태국망고4입+애플망고3입"/></a>
+											<div class="list-icon">
+												
+												<div class="button">
+												   <div class="likeButton displaynone"><button type="button"> <strong></strong></button></div>
+												   <div class="option"></div> <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231001516600.png"  onClick="CAPP_SHOP_NEW_PRODUCT_OPTIONSELECT.selectOptionCommon(627,  1, 'basket', '')" alt="장바구니 담기" class="ec-admin-icon cart" />  <img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/upload/icon_202409231002035800.png"  class="icon_img ec-product-listwishicon" alt="관심상품 등록 전" productno="627" categoryno="1" icon_status="off" login_status="T" individual-set="F" />											   </div>
+											</div>
+										</div>
+									</div>
+									<div class="description">
+										 <script>
+											var a = 100-(68800*100/);
+											var a_rate = Math.round(a);
+											if(a_rate > 0){              
+											document.write("<div class='salerate'>"+a_rate +"%" +"</div>");  
+											}                                      
+										</script>
+										<strong class="name"><a href="/product/올프레쉬-프리미엄-태국망고4입애플망고3입/627/category/1/display/5/?icid=MAIN.product_listmain_4" class=""><span class="title displaynone"><span class="" style="font-size:12px;color:#555555;">상품명</span> :</span> <span class="" style="font-size:12px;color:#555555;">[올프레쉬] 프리미엄 태국망고4입+애플망고3입</span></a></strong>
+										<ul class="xans-element- xans-product xans-product-listitem-4 xans-product-listitem xans-product-4 spec listspec"><li class=" xans-record-">
+<strong class="title displaynone"><span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">판매가</span> :</strong> <span class="" style="font-size:12px;color:#008BCC;font-weight:bold;">68,800원</span><span id="span_product_tax_type_text" style=""> </span></li>
+</ul>
+									</div>
+								</li>
+ <!-- end work-item -->
+
+							</ul>
+</div>
+<!-- new-->
+					</div>
+				</div>
+
+			</div>
+		</div>
+	</div>
+</section> <!-- end portfolio slider -->
+
+
+<section class="section-wrap bg-gray ">
+    <div class="container">
+		<div class="row">
+            <div class="col-md-12 text-center  mb-30">
+				<h1 class="heading uppercase mb-30 animated-bottom">WITH FARMER'S DREAMS</h1>
+				<p class="animated-bottom">농가의 꿈과 함께합니다.<br/><br/>
+
+정직한 농가와 함께 성장하는 ‘상생의 희망’<br/>
+품질, 가격, 서비스 모두에서 만족하는 ‘행복한 선택’<br/>
+그 중심에 올프레쉬가 있습니다.</p>
+				
+			</div>
+
+			
+		</div>
+    </div>
+</section>
+
+
+
+<section class="section-wrap">
+    <div class="container">
+		<div class="row">
+
+             <div class="mt50 text-center mb-50">
+				<h1 class="heading uppercase">REVIEW</h1>
+				<p class="m-dec Montserrat mt-10"></p>
+			</div>
+
+			<ul id="review_slide" class="works-grid with-title gutter owl-carousel owl-theme">
+
+							<!--
+								$count = 8
+								$main_list = yes
+								$subject_cut = 25
+								$content_cut = 25
+								$main_list_reply_view = no
+							-->
+
+						<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11768/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/09c65250ca90035c9614d79f83e0319c.png" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>만족<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 15종 럭셔리 4호(멜론, 대저토마토 외) 7.1kg 이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11767/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20250102/88e66bc1c8148b635ad604c9560ecb0b.png" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>만족<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[사전예약특가/수량한정] 프리미엄 과일선물세트 친환경 포장 3호 2.8kg이상 제철과일 특품 8종 (샤인머스켓, 한라봉 외)</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11766/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/25e6ede245f38faaf08a8bdfdef0b405.png" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>만족<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 15종 럭셔리 1호(대저토마토, 천혜향 외) 4.8kg 이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11765/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/49d11cfce2ab2d7ffd57d8c21fc3f544.png" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>만족<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 8종 에코그린 3호(대저토마토, 천혜향 외) 2.8kg 이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11764/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/8880306b2dcefbbaead71d8c81cbb754.png" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>만족<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 5종 1호(대저토마토, 천혜향 외)1.1kg이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11763/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260116/71bb63fd4de97c1fd75cfe7f7cb542f5.jpg" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>럭셔리하고 깔끔한 만족도 높은 선물<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[사전예약특가/수량한정] 프리미엄 과일선물세트 친환경 포장 2호 2.3kg이상 제철과일 특품 8종 (한라봉, 망고 외)</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11762/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260120/1d83051629ec985b6b194a47b5b805ec.jpg" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>너무달고 맛있어요 선물받았는데 맛나서 제가 또 주문함요<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//3a72949e7423ed6cdb1b82d5f81f5e99.jpeg" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 레드향 9입</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11760/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/10a45084cfb1ca4ffea8da549bc4c504.png" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>만족<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 11종 에코그린 4호(대저토마토, 천혜향 외) 3.5kg 이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11758/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/bac355f09ea17d6786130dd590c6282c.jpg" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>신선하고 아름다운 과일<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 9종 에코그린 2호(대저토마토, 천혜향 외) 2.2kg 이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11757/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/bac355f09ea17d6786130dd590c6282c.jpg" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>올프레쉬 응원하는 마음으로 온라인 후기 남깁니다.<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 9종 에코그린 2호(대저토마토, 천혜향 외) 2.2kg 이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11756/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/bac355f09ea17d6786130dd590c6282c.jpg" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>선물용으로 2세트 구매했는데 배송상태부터 상품 신선도와 구성까지 넘 만족해서 리뷰 남겨요.
+과일이 싱싱...<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//849392c7022f64961fb026f8065fae1e.jpg" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 9종 에코그린 2호(대저토마토, 천혜향 외) 2.2kg 이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11755/"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/web/product/big/20260305/09c65250ca90035c9614d79f83e0319c.png" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>만족<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12">[올프레쉬] 프리미엄 과일선물세트 15종 럭셔리 4호(멜론, 대저토마토 외) 7.1kg 이상</span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11754/"><img src="" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>과일이 모두 맛있다고 하네요.<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12"></span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11753/"><img src="" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>너무 맛있다고 합니다.<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12"></span> -->
+								</div>
+								
+							  </div>
+</li>
+<li class="xans-element- xans-board xans-board-list-4 xans-board-list xans-board-4 reviewimg xans-record-"><div>		
+							    <div class="relative" style="overflow:hidden;border:0">
+								<a href="/article/상품-사용후기/4/11752/"><img src="" style="width:100%;margin-bottom:0;border:0" class="reviewproduct-img img-responsive"/></a>
+								</div>
+								<div class="reviewtxt"><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><img src="//img0001.echosting.cafe24.com/front/type_b/image/common/star_on.gif"  alt="" class="ec-common-rwd-image" /><br/>과일이 모두 맛나다고 하네요.<br/>
+
+								<!-- 
+								<span class="reviewproduct"><img src="//ecimg.cafe24img.com/pg1293b82084384039/allfresh777/file_data//" class="img-responsive" onerror="this.src='//img.echosting.cafe24.com/thumb/198x198.gif'" alt="" /></span><span class="txt12"></span> -->
+								</div>
+								
+							  </div>
+</li>
+
+
+			</ul>
+			<!-- <div class="col-md-12 mt-20 text-center" >
+				<a href="/board/product/list.html?board_no=4" class="btn btn-stroke">전체보기</a>
+			</div> -->
+		</div>
+    </div>
+</section>
+
+
+
+
+        </div>
+</div>
+
+
+<section id="">
+        <div class="">
+          <div class="footer-widgets">
+          <div class="container">
+            <div class="row">
+              <div class="col-md-12 col-sm-12 col-xs-12 sm-text-center agree pb-30">
+			    <a href="/shopinfo/guide.html">이용안내</a>
+				<a href="/member/agreement.html">이용약관</a>
+				<a href="/member/privacy.html">개인정보보호정책</a>
+				
+              </div>
+              <div class="xans-element- xans-layout xans-layout-footer col-md-6 col-sm-12 col-xs-12 sm-padding "><div class="">
+                  <h5 class="widget-title" style="">Contact Us</h5>
+                   
+                <p><span>법인명(상호) : 올프레쉬 농업회사법인 주식회사 </span>     <span>대표자(성명) : 조향란</span><br/><span>사업자 등록번호 안내 : [223-81-18174]</span> <span>통신판매업 신고 2020-성남중원-0219</span> <span><a href="#none" onclick="window.open('http://www.ftc.go.kr/bizCommPop.do?wrkr_no=2238118174', 'bizCommPop', 'width=750, height=950;');return false;">[사업자정보확인]</a></span> <br/>
+                <span>전화 : 1577-9185</span>     <span> </span> <br/>
+                <span>주소 : 13201 경기도 성남시 중원구 갈마치로288번길 14 (상대원동) 성남SKV1tower A동 224호</span><br/>
+                <span class=" ">개인정보보호책임자 : <a href="mailto:allfresh@allfresh.co.kr">올프레쉬 농업회사법인 주식회사(allfresh@allfresh.co.kr)</a></span><br/>
+                <span class="">Contact <strong><a href="mailto:"></a></strong> for more information.</span>				</p>
+             
+                </div>
+</div>
+ <!-- end stay in touch -->
+              
+              <div class="col-md-3 col-sm-12 col-xs-12 sm-padding footer-get-in-touch">
+                <h5 class="widget-title">C/S Center</h5>
+                <p>평일 10:00 - 17:00 (점심 12:00 - 13:00)</p>
+                <p style="font-size:12px;">토/일 및 기타공휴일 휴무 </p>
+                <p style="color:#ec6941;font-size:24px;" class="NanumSquareB">02-1577-9185</p>
+                <p style="font-size:11px;">업무 시간 외에는 게시판으로 문의 바랍니다.</p>
+              </div>
+			  <div class="col-md-3 col-sm-12 col-xs-12 sm-padding footer-get-in-touch">
+                <h5 class="widget-title">배송/반품정보</h5>
+                <p>배송조회 : 로젠택배</p>
+                <p style="font-size:12px;">주문마감 : 13시 이전 주문 시 당일 출고 </p>
+                <p style="margin-top:10px">반품주소 : 경기도 성남시 중원구 갈마치로288번길 14</p><p>A동 224호(SK V1 TOWER)</p>
+
+              </div>
+            </div>
+          </div>    
+          </div> <!-- end container -->
+        <div class="bottom-footer">
+          <div class="container">
+            <div class="row">
+              <div class="col-sm-6 copyright sm-text-center">
+                <span>
+                  © Copyright ⓒ 올프레쉬 농업회사법인 주식회사. All Rights Reserved.
+                </span>
+              </div>
+              <!-- <div class="col-sm-6">
+                <ul class="bottom-footer-links text-right sm-text-center">
+                  <li><a href="#"><img src="/SkinImg/img/blog_30.png" class="radius-50"></a></li>
+                  <li><a href="#"><img src="/SkinImg/img/cafe_30.png" class="radius-50"></a></li>
+                  <li><a href="#"><img src="/SkinImg/img/face_30.png" class="radius-50"></a></li>
+                  <li><a href="#"><img src="/SkinImg/img/insta_30.png" class="radius-50"></a></li>
+                  <li><a href="#"><img src="/SkinImg/img/kakao_30.png" class="radius-50"></a></li>
+                </ul>
+              </div> -->
+            </div>
+          </div>
+        </div> <!-- end bottom footer -->
+       </div>
+      </section> <!-- end footer -->
+      <div id="back-to-top">
+        <a href="#top"><i class="fa fa-angle-up"></i></a>
+      </div>
+    </div> <!-- end content wrapper -->
+  </main> <!-- end main wrapper -->
+
+
+	  <!-- jQuery Scripts -->
+	  <script src="/layout/basic/js/aos.js"></script>
+      
+	  
+	  
+
+	  
+	  <script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/4.5.1/js/swiper.min.js"></script>
+
+	  
+
+
+
+
+
+
+<!-- 결제를 위한 필수 영역 -->
+<div id="progressPaybar" style="display:none;">
+    <div id="progressPaybarBackground" class="layerProgress"></div>
+    <div id="progressPaybarView">
+        <div class="box">
+            <p class="graph">
+                <span><img src="//img.echosting.cafe24.com/skin/base_ko_KR/layout/txt_progress.gif" alt="현재 결제가 진행중입니다."/></span>
+                <span><img src="//img.echosting.cafe24.com/skin/base/layout/img_loading.gif" alt=""/></span>
+            </p>
+            <p class="txt">
+                본 결제 창은 결제완료 후 자동으로 닫히며,결제 진행 중에 본 결제 창을 닫으시면<br/>
+                주문이 되지 않으니 결제 완료 될 때 까지 닫지 마시기 바랍니다.
+            </p>
+        </div>
+    </div>
+</div>
+<!-- // 결제를 위한 필수 영역 -->
+
+<div class="xans-element- xans-layout xans-layout-multishopshipping "><div class="dimmed"></div>
+<div class="worldshipLayer ec-base-layer">
+        <div class="header">
+            <h3>WORLD SHIPPING</h3>
+        </div>
+        <div class="content">
+            <p class="desc">PLEASE SELECT THE DESTINATION COUNTRY AND LANGUAGE :</p>
+            <div class="select">
+                <select class="xans-element- xans-layout xans-layout-multishopshippingcountrylist"><option value="GH"  class="xans-record-">SHIPPING TO : 가나(GHANA)</option>
+<option value="GA"  class="xans-record-">SHIPPING TO : 가봉(GABON)</option>
+<option value="GY"  class="xans-record-">SHIPPING TO : 가이아나(GUYANA)</option>
+<option value="GM"  class="xans-record-">SHIPPING TO : 감비아(GAMBIA)</option>
+<option value="GT"  class="xans-record-">SHIPPING TO : 과테말라(GUATEMALA)</option>
+<option value="GD"  class="xans-record-">SHIPPING TO : 그레나다(GRENADA)</option>
+<option value="GE"  class="xans-record-">SHIPPING TO : 그루지야(GEORGIA)</option>
+<option value="GR"  class="xans-record-">SHIPPING TO : 그리스(GREECE)</option>
+<option value="GN"  class="xans-record-">SHIPPING TO : 기니(GUINEA)</option>
+<option value="GW"  class="xans-record-">SHIPPING TO : 기니비소(GUINEA-BISSAU)</option>
+<option value="NA"  class="xans-record-">SHIPPING TO : 나미비아(NAMIBIA)</option>
+<option value="NG"  class="xans-record-">SHIPPING TO : 나이지리아(NIGERIA)</option>
+<option value="ZA"  class="xans-record-">SHIPPING TO : 남아프리카공화국(SOUTH AFRICA)</option>
+<option value="AN"  class="xans-record-">SHIPPING TO : 네덜란드(네덜란드령앤틸리스)(NETHERLANDS(ANTILLES))</option>
+<option value="NL"  class="xans-record-">SHIPPING TO : 네덜란드(네델란드)(NETHERLANDS)</option>
+<option value="AW"  class="xans-record-">SHIPPING TO : 네덜란드(아루바섬)(ARUBA)</option>
+<option value="NP"  class="xans-record-">SHIPPING TO : 네팔(NEPAL)</option>
+<option value="NO"  class="xans-record-">SHIPPING TO : 노르웨이(NORWAY)</option>
+<option value="NZ"  class="xans-record-">SHIPPING TO : 뉴질란드(NEW ZEALAND)</option>
+<option value="NE"  class="xans-record-">SHIPPING TO : 니제르(NIGER)</option>
+<option value="NI"  class="xans-record-">SHIPPING TO : 니카라과(NICARAGUA)</option>
+<option value="KR"  class="xans-record-">SHIPPING TO : 대한민국(KOREA (REP OF,))</option>
+<option value="DK"  class="xans-record-">SHIPPING TO : 덴마크(DENMARK)</option>
+<option value="GL"  class="xans-record-">SHIPPING TO : 덴마크(그린란드)(GREENLAND)</option>
+<option value="FO"  class="xans-record-">SHIPPING TO : 덴마크(페로즈제도)(FAROE ISLANDS)</option>
+<option value="DO"  class="xans-record-">SHIPPING TO : 도미니카공화국(DOMINICAN REPUBLIC)</option>
+<option value="DM"  class="xans-record-">SHIPPING TO : 도미니카연방(DOMINICA)</option>
+<option value="DE"  class="xans-record-">SHIPPING TO : 독일(GERMANY)</option>
+<option value="TL"  class="xans-record-">SHIPPING TO : 동티모르(TIMOR-LESTE)</option>
+<option value="LA"  class="xans-record-">SHIPPING TO : 라오스(LAO PEOPLE'S DEM REP)</option>
+<option value="LR"  class="xans-record-">SHIPPING TO : 라이베리아(LIBERIA)</option>
+<option value="LV"  class="xans-record-">SHIPPING TO : 라트비아(LATVIA)</option>
+<option value="RU"  class="xans-record-">SHIPPING TO : 러시아(RUSSIAN FEDERATION)</option>
+<option value="LB"  class="xans-record-">SHIPPING TO : 레바논(LEBANON)</option>
+<option value="LS"  class="xans-record-">SHIPPING TO : 레소토(LESOTHO)</option>
+<option value="RO"  class="xans-record-">SHIPPING TO : 루마니아(ROMANIA)</option>
+<option value="LU"  class="xans-record-">SHIPPING TO : 룩셈부르크(LUXEMBOURG)</option>
+<option value="RW"  class="xans-record-">SHIPPING TO : 르완다(RWANDA)</option>
+<option value="LY"  class="xans-record-">SHIPPING TO : 리비아(LIBYAN ARAB JAMAHIRIYA)</option>
+<option value="LI"  class="xans-record-">SHIPPING TO : 리첸쉬테인(LIECHTENSTEIN)</option>
+<option value="LT"  class="xans-record-">SHIPPING TO : 리투아니아(LITHUANIA)</option>
+<option value="MG"  class="xans-record-">SHIPPING TO : 마다가스카르(MADAGASCAR)</option>
+<option value="MK"  class="xans-record-">SHIPPING TO : 마케도니아(MACEDONIA)</option>
+<option value="MW"  class="xans-record-">SHIPPING TO : 말라위(MALAWI)</option>
+<option value="MY"  class="xans-record-">SHIPPING TO : 말레이지아(MALAYSIA)</option>
+<option value="ML"  class="xans-record-">SHIPPING TO : 말리(MALI)</option>
+<option value="MX"  class="xans-record-">SHIPPING TO : 멕시코(MEXICO)</option>
+<option value="MC"  class="xans-record-">SHIPPING TO : 모나코(MONACO)</option>
+<option value="MA"  class="xans-record-">SHIPPING TO : 모로코(MOROCCO)</option>
+<option value="MU"  class="xans-record-">SHIPPING TO : 모리셔스(MAURITIUS)</option>
+<option value="MR"  class="xans-record-">SHIPPING TO : 모리타니(MAURITANIA)</option>
+<option value="MZ"  class="xans-record-">SHIPPING TO : 모잠비크(MOZAMBIQUE)</option>
+<option value="ME"  class="xans-record-">SHIPPING TO : 몬테네그로(MONTENEGRO)</option>
+<option value="MD"  class="xans-record-">SHIPPING TO : 몰도바(MOLDOVA, REPUBLIC OF)</option>
+<option value="MV"  class="xans-record-">SHIPPING TO : 몰디브(MALDIVES)</option>
+<option value="MT"  class="xans-record-">SHIPPING TO : 몰타(MALTA)</option>
+<option value="MN"  class="xans-record-">SHIPPING TO : 몽고(MONGOLIA)</option>
+<option value="US"  selected="selected" class="xans-record-">SHIPPING TO : 미국(U.S.A)</option>
+<option value="GU"  class="xans-record-">SHIPPING TO : 미국(괌)(GUAM)</option>
+<option value="MH"  class="xans-record-">SHIPPING TO : 미국(마아샬제도)(MARSHALL ISLANDS)</option>
+<option value="VI"  class="xans-record-">SHIPPING TO : 미국(버진제도)(VIRGIN ISLANDS U.S.)</option>
+<option value="WS"  class="xans-record-">SHIPPING TO : 미국(사모아, 구 서사모아)(SAMOA)</option>
+<option value="AS"  class="xans-record-">SHIPPING TO : 미국(사모아제도)(AMERICAN SAMOA)</option>
+<option value="MP"  class="xans-record-">SHIPPING TO : 미국(사이판)(NORTHERN MARIANA ISLANDS)</option>
+<option value="PW"  class="xans-record-">SHIPPING TO : 미국(팔라우섬)(PALAU)</option>
+<option value="PR"  class="xans-record-">SHIPPING TO : 미국(푸에르토리코섬)(PUERTO RICO)</option>
+<option value="MM"  class="xans-record-">SHIPPING TO : 미얀마(MYANMAR)</option>
+<option value="FM"  class="xans-record-">SHIPPING TO : 미크로네시아(마이크로네시아)(MICRONESIA)</option>
+<option value="VU"  class="xans-record-">SHIPPING TO : 바누아투(VANUATU)</option>
+<option value="BH"  class="xans-record-">SHIPPING TO : 바레인(BAHRAIN)</option>
+<option value="BB"  class="xans-record-">SHIPPING TO : 바베이도스(BARBADOS)</option>
+<option value="BS"  class="xans-record-">SHIPPING TO : 바하마(BAHAMAS)</option>
+<option value="BD"  class="xans-record-">SHIPPING TO : 방글라데시(BANGLADESH)</option>
+<option value="VE"  class="xans-record-">SHIPPING TO : 베네수엘라(VENEZUELA)</option>
+<option value="BJ"  class="xans-record-">SHIPPING TO : 베넹(BENIN)</option>
+<option value="VN"  class="xans-record-">SHIPPING TO : 베트남(VIET NAM)</option>
+<option value="BE"  class="xans-record-">SHIPPING TO : 벨기에(BELGIUM)</option>
+<option value="BY"  class="xans-record-">SHIPPING TO : 벨라루스(BELARUS)</option>
+<option value="BZ"  class="xans-record-">SHIPPING TO : 벨리세(BELIZE)</option>
+<option value="BA"  class="xans-record-">SHIPPING TO : 보스니아헤르체코비나(Bosnia and Herzegovina)</option>
+<option value="BW"  class="xans-record-">SHIPPING TO : 보츠와나(BOTSWANA)</option>
+<option value="BO"  class="xans-record-">SHIPPING TO : 볼리비아(BOLIVIA)</option>
+<option value="BF"  class="xans-record-">SHIPPING TO : 부르키나파소(BURKINA FASO)</option>
+<option value="BT"  class="xans-record-">SHIPPING TO : 부탄(BHUTAN)</option>
+<option value="BG"  class="xans-record-">SHIPPING TO : 불가리아(BULGARIA(REP))</option>
+<option value="BR"  class="xans-record-">SHIPPING TO : 브라질(BRAZIL)</option>
+<option value="BN"  class="xans-record-">SHIPPING TO : 브루네이(나이)(BRUNEI DARUSSALAM)</option>
+<option value="BI"  class="xans-record-">SHIPPING TO : 브룬디(BURUNDI)</option>
+<option value="SA"  class="xans-record-">SHIPPING TO : 사우디아라비아(SAUDI ARABIA)</option>
+<option value="CY"  class="xans-record-">SHIPPING TO : 사이프러스(CYPRUS)</option>
+<option value="SM"  class="xans-record-">SHIPPING TO : 산마리노(SAN MARINO)</option>
+<option value="SN"  class="xans-record-">SHIPPING TO : 세네갈(SENEGAL)</option>
+<option value="RS"  class="xans-record-">SHIPPING TO : 세르비아/코소보(SERBIA/KOSOVO)</option>
+<option value="SC"  class="xans-record-">SHIPPING TO : 세이셸(SEYCHELLES)</option>
+<option value="LC"  class="xans-record-">SHIPPING TO : 세인트 루시아(SAINT LUCIA)</option>
+<option value="VC"  class="xans-record-">SHIPPING TO : 세인트빈센트그레나딘(SAINT VINCENT AND THE GRENADINES)</option>
+<option value="KN"  class="xans-record-">SHIPPING TO : 세인트키츠네비스(SAINT KITTS AND NEVIS)</option>
+<option value="SB"  class="xans-record-">SHIPPING TO : 솔로몬아일란드(SOLOMON ISLANDS)</option>
+<option value="SR"  class="xans-record-">SHIPPING TO : 수리남(SURINAME)</option>
+<option value="LK"  class="xans-record-">SHIPPING TO : 스리랑카(SRI LANKA)</option>
+<option value="SZ"  class="xans-record-">SHIPPING TO : 스와질랜드(SWAZILAND)</option>
+<option value="SE"  class="xans-record-">SHIPPING TO : 스웨덴(SWEDEN)</option>
+<option value="CH"  class="xans-record-">SHIPPING TO : 스위스(SWITZERLAND)</option>
+<option value="ES"  class="xans-record-">SHIPPING TO : 스페인(에스파니아)(SPAIN)</option>
+<option value="SK"  class="xans-record-">SHIPPING TO : 슬로바키아(SLOVAKIA)</option>
+<option value="SI"  class="xans-record-">SHIPPING TO : 슬로베니아(SLOVENIA)</option>
+<option value="SL"  class="xans-record-">SHIPPING TO : 시에라리온(SIERRA LEONE)</option>
+<option value="SG"  class="xans-record-">SHIPPING TO : 싱가포르(SINGAPORE)</option>
+<option value="AE"  class="xans-record-">SHIPPING TO : 아랍에미레이트연합국(UNITED ARAB EMIRATES)</option>
+<option value="AM"  class="xans-record-">SHIPPING TO : 아르메니아(ARMENIA)</option>
+<option value="AR"  class="xans-record-">SHIPPING TO : 아르헨티나(ARGENTINA)</option>
+<option value="IS"  class="xans-record-">SHIPPING TO : 아이슬란드(ICELAND)</option>
+<option value="HT"  class="xans-record-">SHIPPING TO : 아이티(HAITI)</option>
+<option value="IE"  class="xans-record-">SHIPPING TO : 아일란드(에이레)(IRELAND)</option>
+<option value="AZ"  class="xans-record-">SHIPPING TO : 아제르바이잔(AZERBAIJAN)</option>
+<option value="AF"  class="xans-record-">SHIPPING TO : 아프가니스탄(AFGHANISTAN)</option>
+<option value="AD"  class="xans-record-">SHIPPING TO : 안도라(ANDORRA)</option>
+<option value="AL"  class="xans-record-">SHIPPING TO : 알바니아(ALBANIA)</option>
+<option value="DZ"  class="xans-record-">SHIPPING TO : 알제리(ALGERIA)</option>
+<option value="AO"  class="xans-record-">SHIPPING TO : 앙골라(ANGOLA)</option>
+<option value="AG"  class="xans-record-">SHIPPING TO : 앤티과바부다(ANTIGUA AND BARBUDA)</option>
+<option value="ER"  class="xans-record-">SHIPPING TO : 에리트리아(ERITREA)</option>
+<option value="EE"  class="xans-record-">SHIPPING TO : 에스토니아(ESTONIA)</option>
+<option value="EC"  class="xans-record-">SHIPPING TO : 에콰도르(ECUADOR)</option>
+<option value="SV"  class="xans-record-">SHIPPING TO : 엘살바도르(EL SALVADOR)</option>
+<option value="GB"  class="xans-record-">SHIPPING TO : 영국(UNITED KINGDOM)</option>
+<option value="MS"  class="xans-record-">SHIPPING TO : 영국(몽세라)(MONTSERRAT)</option>
+<option value="BM"  class="xans-record-">SHIPPING TO : 영국(버뮤다섬)(BERMUDA)</option>
+<option value="VG"  class="xans-record-">SHIPPING TO : 영국(버진제도)(VIRGIN ISLANDS BRITISH)</option>
+<option value="AI"  class="xans-record-">SHIPPING TO : 영국(안귈라섬)(ANGUILLA)</option>
+<option value="GI"  class="xans-record-">SHIPPING TO : 영국(지브롤터)(GIBRALTAR)</option>
+<option value="KY"  class="xans-record-">SHIPPING TO : 영국(케이만제도)(CAYMAN ISLANDS)</option>
+<option value="TC"  class="xans-record-">SHIPPING TO : 영국(터크스케이코스제도)(TURKS AND CAICOS ISLANDS)</option>
+<option value="YE"  class="xans-record-">SHIPPING TO : 예멘(YEMEN)</option>
+<option value="OM"  class="xans-record-">SHIPPING TO : 오만(OMAN)</option>
+<option value="NF"  class="xans-record-">SHIPPING TO : 오스트레일리아(노퍽섬)(NORFOLK ISLAND)</option>
+<option value="AU"  class="xans-record-">SHIPPING TO : 오스트레일리아(호주)(AUSTRALIA)</option>
+<option value="AT"  class="xans-record-">SHIPPING TO : 오스트리아(AUSTRIA)</option>
+<option value="HN"  class="xans-record-">SHIPPING TO : 온두라스(HONDURAS)</option>
+<option value="JO"  class="xans-record-">SHIPPING TO : 요르단(JORDAN)</option>
+<option value="UG"  class="xans-record-">SHIPPING TO : 우간다(UGANDA)</option>
+<option value="UY"  class="xans-record-">SHIPPING TO : 우루과이(URUGUAY)</option>
+<option value="UZ"  class="xans-record-">SHIPPING TO : 우즈베크(UZBEKISTAN)</option>
+<option value="UA"  class="xans-record-">SHIPPING TO : 우크라이나(UKRAINE)</option>
+<option value="ET"  class="xans-record-">SHIPPING TO : 이디오피아(ETHIOPIA)</option>
+<option value="IQ"  class="xans-record-">SHIPPING TO : 이라크(IRAQ)</option>
+<option value="IR"  class="xans-record-">SHIPPING TO : 이란(IRAN(ISLAMIC REP))</option>
+<option value="IL"  class="xans-record-">SHIPPING TO : 이스라엘(ISRAEL)</option>
+<option value="EG"  class="xans-record-">SHIPPING TO : 이집트(EGYPT)</option>
+<option value="IT"  class="xans-record-">SHIPPING TO : 이탈리아(이태리)(ITALY)</option>
+<option value="IN"  class="xans-record-">SHIPPING TO : 인도(INDIA)</option>
+<option value="ID"  class="xans-record-">SHIPPING TO : 인도네시아(INDONESIA)</option>
+<option value="JP"  class="xans-record-">SHIPPING TO : 일본(JAPAN)</option>
+<option value="JM"  class="xans-record-">SHIPPING TO : 자메이카(JAMAICA)</option>
+<option value="ZM"  class="xans-record-">SHIPPING TO : 잠비아(ZAMBIA)</option>
+<option value="CN"  class="xans-record-">SHIPPING TO : 중국(CHINA(PEOPLE'S REP))</option>
+<option value="MO"  class="xans-record-">SHIPPING TO : 중국(마카오)(MACAU)</option>
+<option value="HK"  class="xans-record-">SHIPPING TO : 중국(홍콩)(HONG KONG)</option>
+<option value="CF"  class="xans-record-">SHIPPING TO : 중앙 아프리카(CENTRAL AFRICAN REPUBLIC)</option>
+<option value="DJ"  class="xans-record-">SHIPPING TO : 지부티(DJIBOUTI)</option>
+<option value="ZW"  class="xans-record-">SHIPPING TO : 짐바브웨(ZIMBABWE)</option>
+<option value="TD"  class="xans-record-">SHIPPING TO : 차드(CHAD)</option>
+<option value="CZ"  class="xans-record-">SHIPPING TO : 체코(CZECH REP)</option>
+<option value="CL"  class="xans-record-">SHIPPING TO : 칠레(CHILE)</option>
+<option value="CM"  class="xans-record-">SHIPPING TO : 카메룬(CAMEROON)</option>
+<option value="CV"  class="xans-record-">SHIPPING TO : 카보베르데(CAPE VERDE)</option>
+<option value="KZ"  class="xans-record-">SHIPPING TO : 카자흐(KAZAKHSTAN)</option>
+<option value="QA"  class="xans-record-">SHIPPING TO : 카타르(QATAR)</option>
+<option value="KH"  class="xans-record-">SHIPPING TO : 캄보디아(CAMBODIA)</option>
+<option value="CA"  class="xans-record-">SHIPPING TO : 캐나다(CANADA)</option>
+<option value="KE"  class="xans-record-">SHIPPING TO : 케냐(KENYA)</option>
+<option value="CR"  class="xans-record-">SHIPPING TO : 코스타리카(COSTA RICA)</option>
+<option value="CI"  class="xans-record-">SHIPPING TO : 코트디봐르(COTE D IVOIRE)</option>
+<option value="CO"  class="xans-record-">SHIPPING TO : 콜롬비아(COLOMBIA)</option>
+<option value="CG"  class="xans-record-">SHIPPING TO : 콩고(CONGO)</option>
+<option value="CU"  class="xans-record-">SHIPPING TO : 쿠바(CUBA)</option>
+<option value="KW"  class="xans-record-">SHIPPING TO : 쿠웨이트(KUWAIT)</option>
+<option value="HR"  class="xans-record-">SHIPPING TO : 크로아티아(CROATIA)</option>
+<option value="KG"  class="xans-record-">SHIPPING TO : 키르키즈스탄(KYRGYZSTAN)</option>
+<option value="KI"  class="xans-record-">SHIPPING TO : 키리바티(KIRIBATI)</option>
+<option value="TH"  class="xans-record-">SHIPPING TO : 타이(태국)(THAILAND)</option>
+<option value="TW"  class="xans-record-">SHIPPING TO : 타이완(대만)(TAIWAN)</option>
+<option value="TJ"  class="xans-record-">SHIPPING TO : 타지키스탄(TAJIKISTAN)</option>
+<option value="TZ"  class="xans-record-">SHIPPING TO : 탄자니아(TANZANIA(UNITED REP))</option>
+<option value="TR"  class="xans-record-">SHIPPING TO : 터키(TURKEY)</option>
+<option value="TG"  class="xans-record-">SHIPPING TO : 토고(TOGO)</option>
+<option value="TO"  class="xans-record-">SHIPPING TO : 통가(TONGA)</option>
+<option value="TM"  class="xans-record-">SHIPPING TO : 투르크메니스탄(TURKMENISTAN)</option>
+<option value="TV"  class="xans-record-">SHIPPING TO : 투발루(TUVALU)</option>
+<option value="TN"  class="xans-record-">SHIPPING TO : 튀니지(TUNISIA)</option>
+<option value="TT"  class="xans-record-">SHIPPING TO : 트리니다드토바고(TRINIDAD AND TOBAGO)</option>
+<option value="PA"  class="xans-record-">SHIPPING TO : 파나마(PANAMA(REP))</option>
+<option value="PY"  class="xans-record-">SHIPPING TO : 파라과이(PARAGUAY)</option>
+<option value="PK"  class="xans-record-">SHIPPING TO : 파키스탄(PAKISTAN)</option>
+<option value="PG"  class="xans-record-">SHIPPING TO : 파푸아뉴기니(PAPUA NEW GUINEA)</option>
+<option value="PE"  class="xans-record-">SHIPPING TO : 페루(PERU)</option>
+<option value="PT"  class="xans-record-">SHIPPING TO : 포르투갈(PORTUGAL)</option>
+<option value="PL"  class="xans-record-">SHIPPING TO : 폴란드(POLAND(REP))</option>
+<option value="FR"  class="xans-record-">SHIPPING TO : 프랑스(FRANCE)</option>
+<option value="GP"  class="xans-record-">SHIPPING TO : 프랑스(과데루프섬)(GUADELOUPE)</option>
+<option value="GF"  class="xans-record-">SHIPPING TO : 프랑스(기아나)(FRENCH GUIANA)</option>
+<option value="NC"  class="xans-record-">SHIPPING TO : 프랑스(뉴칼레도니아섬)(NEW CALEDONIA)</option>
+<option value="RE"  class="xans-record-">SHIPPING TO : 프랑스(레위니옹섬)(REUNION)</option>
+<option value="MQ"  class="xans-record-">SHIPPING TO : 프랑스(마르티니크섬)(MARTINIQUE)</option>
+<option value="PF"  class="xans-record-">SHIPPING TO : 프랑스(폴리네시아)(FRENCH POLYNESIA)</option>
+<option value="FJ"  class="xans-record-">SHIPPING TO : 피지(FIJI)</option>
+<option value="FI"  class="xans-record-">SHIPPING TO : 필란드(FINLAND)</option>
+<option value="PH"  class="xans-record-">SHIPPING TO : 필리핀(PHILIPPINES)</option>
+<option value="HU"  class="xans-record-">SHIPPING TO : 헝가리(HUNGARY(REP))</option>
+</select>
+            </div>
+            <div class="select">
+                <select class="xans-element- xans-layout xans-layout-multishopshippinglanguagelist"><option value="allfresh.co.kr"  selected="selected" class="xans-record-">LANGUAGE : 한국어</option>
+</select>
+            </div>
+        </div>
+        <div class="ec-base-button">
+            <a href="#none" class="btnSubmitFix sizeS">GO</a>
+        </div>
+        <a href="#none" class="close"><img src="//img.echosting.cafe24.com/skin/base/common/btn_close.gif" width="13" height="13" alt="close"/></a>
+    </div>
+</div>
+
+
+	
+	
+	
+
+	
+	
+
+<span itemscope="" itemtype="https://schema.org/Organization">
+<link itemprop="url" href="https://allfresh.co.kr">
+<a itemprop="sameAs" href="https://smartstore.naver.com/allfresh/category/efa805c45ee34faf91635e73511d5b83?cp=1"></a>
+<a itemprop="sameAs" href="https://smartstore.naver.com/allfresh/category/10e66cbc965444a6838336c9e6b23d90?cp=1"></a>
+<a itemprop="sameAs" href="https://smartstore.naver.com/allfresh/category/0d591275a5f64eeb828829c1fe35b93d?cp=1"></a>
+<a itemprop="sameAs" href="https://blog.naver.com/allfresh9185"></a>
+<a itemprop="sameAs" href="https://www.instagram.com/fruit_sommelier/"></a>
+<a itemprop="sameAs" href="https://www.youtube.com/@allfreshJO"></a>
+</span>
+<script type="text/javascript" src="/app/Eclog/js/cid.generate.js?vs=c36b7194ad9f7f4bbb2535e7f7768d8f&u=allfresh777.1"></script>
+<script>        (function (i, s, o, g) {
+            var a = s.createElement(o), m = s.getElementsByTagName(o)[0];
+            var initialized = false;
+            var interval = null;
+
+            function safeInit() {
+              if (initialized) return;
+              if (typeof i.initCaWebAnalytics === 'function') {
+                try {
+                  i.initCaWebAnalytics({"mid":"allfresh777","stype":"e","domain":"","shop_no":1,"lang":"ko_KR","mobile_flag":"F","send_endpoint":"https://ca-log.cafe24data.com","path_role":"MAIN"});
+                  initialized = true;
+                } finally {
+                  if (interval) clearInterval(interval);
+                  a.onload = a.onreadystatechange = a.onerror = null;
+                }
+              }
+            }
+
+            a.onload = a.onreadystatechange = function () {
+              if (!a.readyState || a.readyState === 'loaded' || a.readyState === 'complete') {
+                safeInit();
+              }
+            };
+
+            a.onerror = function () {
+              if (interval) { clearInterval(interval); interval = null; }
+              a.onload = a.onreadystatechange = a.onerror = null;
+            };
+
+            interval = setInterval(safeInit, 200);
+            setTimeout(function () {
+              if (interval) { clearInterval(interval); interval = null; }
+            }, 10000);
+
+            safeInit();
+
+            a.async = 1;
+            a.setAttribute('crossorigin', 'anonymous');
+            a.src = g;
+            m.parentNode.insertBefore(a, m);
+        })(window, document, 'script', "//optimizer.poxo.com/ca2/analytics.js?v=20260323");</script>
+
+                <script>
+                try {
+                    // Account ID 적용
+                    if (!wcs_add) var wcs_add = {};
+                    wcs_add["wa"] = "s_1a824062a1d5";
+            
+                    // 네이버 페이 White list가 있을 경우
+                    wcs.checkoutWhitelist = ["allfresh777.cafe24.com", "www.allfresh777.cafe24.com", "m.allfresh777.cafe24.com", "allfresh.co.kr", "www.allfresh.co.kr", "m.allfresh.co.kr"];
+                
+                    // 레퍼러 
+                    wcs.setReferer("");
+
+                    // 유입 추적 함수 호출
+                    wcs.inflow("allfresh.co.kr");
+
+                    // 로그수집
+                    wcs_do();
+                } catch (e) {};
+                </script>
+            
+
+<!-- External Script Start -->
+
+<!-- fbe -->
+<!-- CMC3 script -->
+<div id="fbe_common_top_script" style="display:none;">
+  <script type="text/javascript">
+if (typeof facebookChannel === 'undefined') {
+  var facebookChannel = {
+    mall_id: CAFE24.SHOP.getMallID(),
+    shop_no: CAFE24.SDE_SHOP_NUM,
+    shop_id: CAFE24.SHOP.getMallID() + '.' + CAFE24.SDE_SHOP_NUM,
+    external_id: null,
+    event_id: null,
+
+    setInitActivated: function(is_activated) {
+      window.top.fbe_init_activated = !!is_activated;
+    },
+    getInitActivated: function() {
+      return !!window.top.fbe_init_activated;
+    },
+    setEventActivated: function(event_type, is_activated) {
+      if (typeof event_type === 'string' && event_type) {
+        let key = 'fbe_' + event_type + '_activated'
+        window.top[key] = !!is_activated;
+      }
+    },
+    getEventActivated: function(event_type) {
+      if (typeof event_type === 'string' && event_type) {
+        let key = 'fbe_' + event_type + '_activated'
+        return !!window.top[key];
+      }
+      return false;
+    },
+    getCookie: function(name) {
+      return (name = (document.cookie + ';').match(name + '=.*;')) && name[0].split(/=|;/)[1];
+    },
+    getExternalId: function() {
+      return facebookChannel.getCookie('fb_external_id');
+    },
+    getEventId: function() {
+      return facebookChannel.getCookie('fb_event_id');
+    },
+    getInt: function(value) {
+      let value_int = parseInt(value);
+      value_int = isNaN(value_int) ? 0 : value_int;
+      return value_int;
+    },
+    getFloat: function(value) {
+      let value_float = parseFloat(value);
+      value_float = isNaN(value_float) ? 0.00 : value_float.toFixed(2);
+      return value_float;
+    },
+    init: function() {
+      if (facebookChannel.getInitActivated()) {
+        return;
+      }
+      facebookChannel.setInitActivated(true);
+
+      !function(f,b,e,v,n,t,s)
+      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window,document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+
+      if ((typeof EC_GLOBAL_INFO !== 'undefined' && EC_GLOBAL_INFO.getCountryCode() === 'US') || (typeof SHOP !== 'undefined' && SHOP.getLanguage() === 'en_US')) {
+        fbq('dataProcessingOptions', ['LDU'], 0, 0);
+      }
+
+      if (typeof ECLOG !== 'undefined' && !!ECLOG.EXTERNAL_ID) {
+        ECLOG.EXTERNAL_ID.chk(facebookChannel.shop_id, function(error, external_id) {
+          if (error || !external_id) {
+            external_id = facebookChannel.getExternalId();
+            console.info('external_id is cookie value.', '(1)');
+          }
+          fbq('init', '1291924022453576',{external_id: external_id}, {agent: 'plcafe24'});
+          fbq('trackSingle', '1291924022453576', 'PageView');
+          facebookChannel.external_id = external_id;
+          facebookChannel.basketEvent();
+        });
+      } else {
+        let external_id = facebookChannel.getExternalId();
+        console.info('external_id is cookie value.', '(2)');
+
+        fbq('init', '1291924022453576',{external_id: external_id}, {agent: 'plcafe24'});
+        fbq('trackSingle', '1291924022453576', 'PageView');
+        facebookChannel.external_id = external_id;
+        facebookChannel.basketEvent();
+      }
+    },
+    pixelEvent: function(event_type, callback, is_cookie_event) {
+      if (facebookChannel.getEventActivated(event_type)) {
+        return;
+      }
+      facebookChannel.setEventActivated(event_type, true);
+      is_cookie_event = !!is_cookie_event;
+
+      let retry = 0;
+      let execute = function() {
+        if (!facebookChannel.external_id) {
+          if (retry < 10) {
+            retry++;
+            if (retry >= 5) {
+              console.warn('retry #' + retry, event_type);
+            }
+            setTimeout(execute, 1000);
+          } else {
+            console.warn('external_id is empty.');
+          }
+          return;
+        }
+
+        if (callback.length === 0) {
+          callback();
+        }
+        else if (!is_cookie_event && typeof ECLOG !== 'undefined' && !!ECLOG.EVENT_ID) {
+          ECLOG.EVENT_ID.chk(facebookChannel.shop_id, function(error, event_id) {
+            if (error || !event_id) {
+              event_id = facebookChannel.getEventId();
+              console.info('event_id is cookie value.', '(1)');
+            }
+            facebookChannel.event_id = event_id;
+            if (event_id) {
+              callback(event_id);
+            } else {
+              console.warn('event_id is empty.', '(1)');
+            }
+          });
+        }
+        else {
+          let event_id = facebookChannel.getEventId();
+          console.info('event_id is cookie value.', '(2)');
+          facebookChannel.event_id = event_id;
+          if (event_id) {
+            callback(event_id);
+          } else {
+            console.warn('event_id is empty.', '(2)');
+          }
+        }
+      };
+      execute();
+    },
+    messengerChatPlugin: function() {
+      let event_type = 'messenger';
+      let sdk_version = '';
+      let locale = '';
+      if (!sdk_version) {
+        console.warn('sdk_version is empty.');
+        return;
+      }
+      if (!locale) {
+        console.warn('locale is empty.');
+        return;
+      }
+      if (facebookChannel.getEventActivated(event_type)) {
+        return;
+      }
+      facebookChannel.setEventActivated(event_type, true);
+
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId : '216637735743129',
+          autoLogAppEvents : true,
+          xfbml : true,
+          version : sdk_version
+        });
+      };
+      (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = 'https://connect.facebook.net/' + locale + '/sdk/xfbml.customerchat.js';
+        fjs.parentNode.insertBefore(js, fjs);
+      }(document, 'script', 'facebook-jssdk'));
+    },
+    basketEvent: function() {
+      let event_key = 'AddToCart';
+      if (facebookChannel.getEventActivated(event_key + '_listener')) {
+        return;
+      }
+      facebookChannel.setEventActivated(event_key + '_listener', true);
+
+      facebookChannel.pixelEvent(event_key, function(event_id) {
+        EC$("body").bind("EC_PRODUCT_ACTION_BASKET", function(e, params) {
+          try {
+            // 필수 데이터 검증
+            let validation_error = null;
+
+            if (!params || typeof params !== 'object') {
+              validation_error = 'params가 없거나 유효하지 않음';
+            } else if (!params.product_no) {
+              validation_error = 'product_no가 없음';
+            } else if (!params.contents || params.contents.length === 0) {
+              validation_error = 'contents가 비어있음';
+            } else if (typeof params.total_price === 'undefined' || params.total_price === null) {
+              validation_error = 'total_price가 없음';
+            } else {
+              // contents 배열의 각 항목 검증
+              for (let i = 0; i < params.contents.length; i++) {
+                let item = params.contents[i];
+                if (!item.variant_code) {
+                  validation_error = 'contents[' + i + '].variant_code가 없음';
+                  break;
+                }
+                if (!item.quantity) {
+                  validation_error = 'contents[' + i + '].quantity가 없음';
+                  break;
+                }
+                if (typeof item.price === 'undefined' || item.price === null) {
+                  validation_error = 'contents[' + i + '].price가 없음';
+                  break;
+                }
+              }
+            }
+
+            // 검증 실패 시 로그 전송 후 종료
+            if (validation_error) {
+              console.warn('AddToCart 이벤트 무시: ' + validation_error);
+              window.EC_JET?.message?.({
+                mall_id: facebookChannel.mall_id,
+                shop_no: facebookChannel.shop_no,
+                pixel_id: 1291924022453576,
+                external_id: facebookChannel.external_id,
+                event_id: event_id,
+                validation_error: validation_error,
+                params: params
+              }, 'MBE_ADDTOCART_VALIDATION_ERROR');
+              return;
+            }
+
+            let event_data = {
+              contents: params.contents.map(function(v) {
+                return {
+                  id: params.product_no + '.' + v.variant_code,
+                  quantity: facebookChannel.getInt(v.quantity),
+                  item_price: facebookChannel.getFloat(v.price)
+                };
+              }),
+              content_type: 'product',
+              value: facebookChannel.getFloat(params.total_price),
+              currency: params.currency
+            };
+
+            let event_log_data = Object.assign({
+              mall_id: facebookChannel.mall_id,
+              shop_no: facebookChannel.shop_no,
+              pixel_id: 1291924022453576,
+              external_id: facebookChannel.external_id,
+              event_id: event_id
+            }, event_data);
+
+            window.EC_JET?.message?.(event_log_data, 'MBE_ADDTOCART_EVENT');
+            fbq('trackSingle', '1291924022453576', event_key, event_data, {eventID: event_id});
+          } catch (e) { console.error(e); }
+        });
+      });
+    }
+  };
+
+  window.addEventListener('load', facebookChannel.init, false);
+}
+</script>
+<noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1291924022453576&ev=PageView&noscript=1"
+/></noscript>
+</div>
+<!-- CMC3 script -->
+
+<!-- gcs -->
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=AW-11323018199"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'AW-11323018199');
+</script>
+
+
+<script>
+  gtag('event', 'conversion', {
+      'send_to': 'AW-11323018199/587FCPSUkYQaENeXnpcq',
+      'value': 0.0,
+  });
+</script>
+<!-- External Script End -->
+
+<script type="text/javascript" src="//t1.kakaocdn.net/kakao_js_sdk/v1/kakao.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="/ind-script/i18n.php?v=2603181464&lang=ko_KR&domain=front&type=" charset="utf-8"></script>
+
+<script src="/ind-script/optimizer.php?filename=zVnLVuM4EN2Dt_Mdhnmd2ZKkmeE0DDmEbtayXE4Ky5JGD4L766dsh24y4JdszplFEtvRvSpJtx6y4p0qID7_2cSZYQXslcljA1Z5wyF-tDGe_yGjR_tT3NXOo2Y8jx__8WDKw88v0e_R2UgkPDswkgl7eBBxpXKEqSzeiKAhRMCjTAZDmUBmw9D0r1PmPwPXRm0Jf7Q8KXPgkBoU1Eq6GPhNffGAbnf_bcUciwqUI3gEJoSCe7ruR1ltULpsAL3ivjLrUpliqaQzSggw_bi18PZC64XBdDvAHu9Q9LfKjKpn6sQqQQglT5zSJwIlnCRMyiF2NRRcFYWSQ1s_M0nuJEmb2oAb3kuNc1BoQevyPohpHd-oBAXEd6_wjX0ds9KCK1Tq6ZHdox7XYeYlrya0apd67qKiVcRDGTqMIKnGXxrveU0h2LdSKJaOAhXesarf28SCeWpbnBawVqLMUAyWXgoZ88JVU2ALZtyiQ3VVo81O6aMOL2uazyxnKs6r7zU-g-jykg6aZa2SL50iaYGuIPHb8R2SjrfKlNdo3WjwHWRgQHJYelP9lmuDfHKGSLZYg_4f-Sql4CstqdFOZQJmUW6nshTgWFqlkrGLZYEZvhvZvRZ-ixTynih_Uq_KvJjx_UFQZn1LW41TpvYtPTFomnz4uB52IDR8-Dh2TKZv0uycHVCgxKz8OH4Kqm62aRKKM8o2uRoV2x3LaIStNVQL6iU4xZYc41S_DVGj8Pxwd5pR-cTcVEvmovEhKeNv2FefdZPeN3WAWLXGlte5UyqPlhaTBDF6OWjhZcpM_Gv0W3QWZ1RJaeS5CSMR52eyVUYdQ28GW_1BJUZdbbxQTpzFW12RbUAAd0FUB8d7tG3V7Aj8O846fEC3QuZB2GYK4k_PzrCaqL6vbzdKpMq7uWnX7U4dTnpVsO3spCu0tHcokfYQM1JfEd2GigsBjfAwUDudhhsiXjCbw-zLd-ll-qY0mk77UNgplN_Jlh1by9FUch6bFijTWYhWIbXke0Rfm-QeKr0fETRoK3JMccFnsGPjFA8LgNeYQ7wwak_JZcn4DsJZJmjvFf4wotE0BxztLR1DES98VcPSw0IFz-8dPCHsHRP54XKpvOywbKGYSY-46GmUVE_DQCXlH59AGNhzHgZMRKeYuqAGtDKBMyQqXyrqVzsdr36YpEx3xLAHMnjbXwfuXEFVk0OHYPtbL02pnfoM5ShbmC0lb76DcQUUSddbnR74raFKl3fJtIegyZvTGXR3oTOIozcY9LCQw9KOfMpYbkiOnbVVD35FHmExvP8HtLvuLDOAgHfHrR4GKqZgAvyuhudQ0rY7nchyrygaLyeNpvaPcFmChAynusY1KyfY8KdhabggL7xTtItHXtNQ9tuH-4YXDtdKex3uoN6SOWDI0Z9wysLclFUNcYgX0xRyRDXJ92qt_YXVmVw5g2oPTPcsmYWn2olNH15Tb13JTIWLQDAsWCJggkWauZ1RAk5_vAUMNee69RCoBawDslST5U-pckE5Cmj3EWftp6AV6tPhRfzxCVld1tLflhvUbiS6OuaJL6pyWQOvDyMz1pXd3yU5CkNaLwcegxqqguESn6nlvw&type=js&k=b1e1b571c6f4c73b3775fe5497fda76b16b37ca2&t=1773882305" ></script><script src="/ind-script/optimizer_user.php?filename=rdFNEsIgDAXgvXXrOTJu7EE8AU1jSQ0kQ2Dh7a0_M-4tq5DNx-MBURMB4dCcikMQuRXyOI4jWJuEcYg1CfhMw0zOSwa_cz7D6pB0bkIg4aGtgic6YKi0aHkcVz_Bn_CPe92BbaJLP86kLZy9HzipVq8l2DFx7sc6FrbaMacLz7SH-_23lW3iJgehwQojdYg5BWd8F_o69AQ_-86no6akuU9_34CpSWWPatfIZpyXTX8C&type=js&k=fb2144fb422a059bbc6818de714a7ca5873faefd&t=1727053305&user=T" ></script>
+<script type="text/javascript">
+var sIsFrontDesignChangeRequired = 'F';
+var sYtshopping = 'F';
+var sIsYoutubeShops = 'F';
+var sIsValidChRef = 'F';
+var sChRef = '';
+var sIsDropshipping = 'F';
+if (sIsValidChRef === 'T') {
+sessionStorage.setItem('ch_ref', sChRef);
+}
+// ch_ref 존재 여부 체크
+CAFE24.hasChRef = function() {
+if (sIsValidChRef === 'T' && sessionStorage.getItem('ch_ref')) {
+return true;
+}
+return false;
+}
+// ch_ref 데이터 조회
+CAFE24.getChRefData = function() {
+if (sIsValidChRef === 'T') {
+return sessionStorage.getItem('ch_ref');
+}
+}
+// 프론트 디자인 변경이 필요한지 여부 반환
+CAFE24.checkChannelUI = function() {
+// [ECHOSTING-598429] 드롭쉬핑은 항상 전체 UI 노출
+if (sIsDropshipping === 'T') {
+return false;
+}
+if ((sIsFrontDesignChangeRequired === 'T' && sessionStorage.getItem('ch_ref')) || sIsYoutubeShops === 'T') {
+return true;
+} else {
+return false;
+}
+}
+// 파라미터에 ch_ref 추가
+CAFE24.attachChRef = function(sUrl) {
+if (sUrl) {
+var sChRef = CAFE24.getChRefData();
+if (sChRef) {
+var sSeparator = (sUrl.includes('?')) ? '&' : '?';
+sUrl += sSeparator + 'ch_ref=' + sChRef;
+}
+}
+return sUrl;
+}
+var sIsCheckout = 'F';
+var sCheckoutToken = '';
+if (sIsCheckout === 'T') {
+sessionStorage.setItem('checkoutToken', sCheckoutToken);
+} else {
+sessionStorage.removeItem('checkoutToken');
+}
+CAFE24.getCheckoutToken = function() {
+if (sIsCheckout === 'T') {
+return sessionStorage.getItem('checkoutToken');
+}
+}
+CAFE24.attachCheckoutParam = function(sUrl) {
+if (sUrl) {
+var sCheckoutToken = CAFE24.getCheckoutToken();
+if (sCheckoutToken) {
+var sSeparator = (sUrl.includes('?')) ? '&' : '?';
+sUrl += sSeparator + 'checkoutToken=' + sCheckoutToken;
+}
+}
+return sUrl;
+}
+CAFE24.MOBILE_WEB = false; var mobileWeb = CAFE24.MOBILE_WEB;
+try {
+var isUseLoginKeepingSubmit = false;
+// isSeqNoKeyExpiretime
+function isSeqNoKeyExpiretime(iExpiretime)
+{
+var sDate = new Date();
+var iNow = Math.floor(sDate.getTime() / 1000);
+// 유효시간 확인
+if (iExpiretime > iNow) {
+return false;
+}
+return true;
+}
+function isUseLoginKeeping()
+{
+// 디바이스 확인
+if (EC_MOBILE_DEVICE === false) {
+return;
+}
+// 로그인 여부
+var isLogin = document.cookie.match(/(?:^| |;)iscache=F/) ? true : false
+if (isLogin) {
+return;
+}
+var sLoginKeepingInfo = localStorage.getItem('use_login_keeping_info');
+var iSeqnoExpiretime;
+var iSeqNoKey;
+if (sLoginKeepingInfo == null) {
+iSeqnoExpiretime = localStorage.getItem('seq_no_key_expiretime');
+iSeqNoKey = localStorage.getItem('seq_no_key');
+// 유효시간, key 값 확인
+if (iSeqnoExpiretime === null || iSeqNoKey === null) {
+return;
+}
+} else {
+var oLoginKeepingInfo = JSON.parse(sLoginKeepingInfo);
+iSeqNoKey = oLoginKeepingInfo.seq_no_key;
+iSeqnoExpiretime = oLoginKeepingInfo.seq_no_key_expiretime;
+if (isNaN(iSeqNoKey) === true || isNaN(iSeqnoExpiretime) === true) {
+return;
+}
+}
+if (isSeqNoKeyExpiretime(iSeqnoExpiretime) === false) {
+return;
+}
+useLoginKeepingSubmit();
+}
+function findGetParamValue(paramKey)
+{
+var result = null,
+tmp = [];
+location.search.substr(1).split('&').forEach(function (item) {
+tmp = item.split('=');
+if (tmp[0] === paramKey) result = decodeURIComponent(tmp[1]);
+});
+return result;
+}
+function useLoginKeepingSubmit()
+{
+var iSeqnoExpiretime;
+var iSeqNoKey;
+var sUseLoginKeepingIp;
+var sLoginKeepingInfo = localStorage.getItem('use_login_keeping_info');
+if (sLoginKeepingInfo == null) {
+iSeqnoExpiretime = localStorage.getItem('seq_no_key_expiretime');
+iSeqNoKey = localStorage.getItem('seq_no_key');
+} else {
+var oLoginKeepingInfo = JSON.parse(sLoginKeepingInfo);
+iSeqNoKey = oLoginKeepingInfo.seq_no_key;
+iSeqnoExpiretime = oLoginKeepingInfo.seq_no_key_expiretime;
+sUseLoginKeepingIp = oLoginKeepingInfo.use_login_keeping_ip;
+}
+var oForm = document.createElement('form');
+oForm.method = 'post';
+oForm.action = '/exec/front/member/LoginKeeping';
+document.body.appendChild(oForm);
+var oSeqNoObj = document.createElement('input');
+oSeqNoObj.name = 'seq_no_key';
+oSeqNoObj.type = 'hidden';
+oSeqNoObj.value = iSeqNoKey;
+oForm.appendChild(oSeqNoObj);
+oSeqNoObj = document.createElement('input');
+oSeqNoObj.name = 'seq_no_key_expiretime';
+oSeqNoObj.type = 'hidden';
+oSeqNoObj.value = iSeqnoExpiretime;
+oForm.appendChild(oSeqNoObj);
+var returnUrl = findGetParamValue('returnUrl');
+if (returnUrl == '' || returnUrl == null) {
+returnUrl = location.pathname + location.search;
+}
+oSeqNoObj = document.createElement('input');
+oSeqNoObj.name = 'returnUrl';
+oSeqNoObj.type = 'hidden';
+oSeqNoObj.value = returnUrl;
+oForm.appendChild(oSeqNoObj);
+if (sUseLoginKeepingIp != undefined) {
+oSeqNoObj = document.createElement('input');
+oSeqNoObj.name = 'use_login_keeping_ip';
+oSeqNoObj.type = 'hidden';
+oSeqNoObj.value = sUseLoginKeepingIp;
+oForm.appendChild(oSeqNoObj);
+}
+oForm.submit();
+isUseLoginKeepingSubmit = true;
+}
+isUseLoginKeeping();
+} catch(e) {
+}
+CAFE24.FRONT_PRODUCT_SEARCH_DATA.bEmptyElasticData = true;
+CAFE24.SHOP_CURRENCY_INFO = {"1":{"aShopCurrencyInfo":{"currency_code":"KRW","currency_no":"410","currency_symbol":"\uffe6","currency_name":"South Korean won","currency_desc":"\uffe6 \uc6d0 (\ud55c\uad6d)","decimal_place":0,"round_method_type":"F"},"aShopSubCurrencyInfo":null,"aBaseCurrencyInfo":{"currency_code":"KRW","currency_no":"410","currency_symbol":"\uffe6","currency_name":"South Korean won","currency_desc":"\uffe6 \uc6d0 (\ud55c\uad6d)","decimal_place":0,"round_method_type":"F"},"fExchangeRate":1,"fExchangeSubRate":null,"aFrontCurrencyFormat":{"head":"","tail":"\uc6d0"},"aFrontSubCurrencyFormat":{"head":"","tail":""}}}; var SHOP_CURRENCY_INFO = CAFE24.SHOP_CURRENCY_INFO;
+CAFE24.FRONT_PRODUCT_SEARCH_DATA.bEmptyElasticData = true;
+CAFE24.FRONT_PRODUCT_SEARCH_DATA.bEmptyElasticData = true;
+if (typeof CAFE24.SHOP_FRONT_NEW_OPTION_COMMON !== "undefined") {CAFE24.SHOP_FRONT_NEW_OPTION_COMMON.initObject();}
+if (typeof CAFE24.SHOP_FRONT_NEW_OPTION_BIND !== "undefined") {CAFE24.SHOP_FRONT_NEW_OPTION_BIND.initChooseBox();}
+if (typeof CAFE24.SHOP_FRONT_NEW_OPTION_DATA !== "undefined") {CAFE24.SHOP_FRONT_NEW_OPTION_DATA.initData();}
+if (typeof CAFE24.SHOP_FRONT_NEW_LIKE_COMMON !== "undefined") {CAFE24.SHOP_FRONT_NEW_LIKE_COMMON.init({"bIsUseLikeProduct":false,"bIsUseLikeCategory":false});}
+if (typeof CAFE24.SHOP_FRONT_REVIEW_TALK_REVIEW_COUNT !== "undefined") {CAFE24.SHOP_FRONT_REVIEW_TALK_REVIEW_COUNT.bIsReviewTalk = 'F';}
+var basket_result = '/product/add_basket.html';
+var basket_option = '/product/basket_option.html';
+var bIsUseSpread = false;
+var sIsSecret = false;
+var iBoardNo = "4";
+var EC_SHOP_MULTISHOP_SHIPPING = {"bMultishopShipping":false,"bMultishopShippingCountrySelection":false,"bMultishopShippingLanguageSelection":false};
+var aLogData = {"log_server1":"eclog2-225.cafe24.com","log_server2":"elg-db-svcm-323.cafe24.com","mid":"allfresh777","stype":"e","domain":"","shop_no":1,"lang":"ko_KR","ver":2,"hash":"","ca":"cfa-js.cafe24.com\/cfa.js","etc":"","mobile_flag":"F"};
+var sMileageName = '적립금';
+var sMileageUnit = '[:PRICE:]원';
+var sDepositName = '예치금';
+var sDepositUnit = '원';
+CAFE24.APPSCRIPT_ASSIGN_DATA = CAFE24.APPSCRIPT_ASSIGN_DATA || [{'src':'https://app4you.cafe24.com/SmartPopup/tunnel/scriptTags?vs=20241111145215.1&client_id=AyPifbe9TEq8i4fmvfUgaZ', 'integrity': 'sha384-j+WLOriOo0/sb+Ho5fn6lGPknv0cW+wMxOLlx8qpy01ShkkynynGNJQ53niqAdze'},{'src':'https://calendar-app.cafe24.com/openapi/inject.js?vs=20241112100200.1&client_id=A8RQp67UIt9nBlqvThz2jC'},{'src':'https://static.alphwidget.com/script/Push-Script/PRODUCTION/alphapush_main.js?vs=20250625145058.1&client_id=tgHZp6LCG5KuklqvIYgrtB'},{'src':'https://static.alphwidget.com/script/Push-Script/PRODUCTION/alphapush_onsite.js?vs=20251106042535.1&client_id=tgHZp6LCG5KuklqvIYgrtB'},{'src':'https://static.alphwidget.com/script/Common-Script/PRODUCTION/alphacore_alpha_data.js?vs=20260205175933.1&client_id=tgHZp6LCG5KuklqvIYgrtB'}];
+CAFE24.APPSCRIPT_SDK_DATA = CAFE24.APPSCRIPT_SDK_DATA || ['store','supply','application','category','product','community','customer','notification','promotion','design','collection','order','analytics','mileage','personal','privacy','salesreport','shipping'];
+var EC_APPSCRIPT_ASSIGN_DATA = CAFE24.getDeprecatedNamespace('EC_APPSCRIPT_ASSIGN_DATA');
+var EC_APPSCRIPT_SDK_DATA = CAFE24.getDeprecatedNamespace('EC_APPSCRIPT_SDK_DATA');
+</script></body>
+</html>
