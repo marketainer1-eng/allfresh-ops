@@ -14,9 +14,8 @@ const updateSchema = z.object({
   successMetric: z.string().optional(),
 });
 
-type Params = { params: { ticketId: string } };
-
-export async function PATCH(req: NextRequest, { params }: Params) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ticketId: string }> }) {
+  const { ticketId } = await params;
   const { ctx, error } = await requireSession();
   if (error) return error;
 
@@ -25,26 +24,27 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!parsed.success) return apiError(parsed.error.issues[0]?.message ?? "Invalid input");
 
   const existing = await prisma.ticketDraft.findFirst({
-    where: { id: params.ticketId, session: { project: { workspaceId: ctx.workspaceId } } },
+    where: { id: ticketId, session: { project: { workspaceId: ctx.workspaceId } } },
   });
   if (!existing) return apiError("Ticket not found", 404);
 
   const updated = await prisma.ticketDraft.update({
-    where: { id: params.ticketId },
+    where: { id: ticketId },
     data: parsed.data,
   });
   return apiResponse(updated);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ ticketId: string }> }) {
+  const { ticketId } = await params;
   const { ctx, error } = await requireSession();
   if (error) return error;
 
   const existing = await prisma.ticketDraft.findFirst({
-    where: { id: params.ticketId, session: { project: { workspaceId: ctx.workspaceId } } },
+    where: { id: ticketId, session: { project: { workspaceId: ctx.workspaceId } } },
   });
   if (!existing) return apiError("Ticket not found", 404);
 
-  await prisma.ticketDraft.delete({ where: { id: params.ticketId } });
+  await prisma.ticketDraft.delete({ where: { id: ticketId } });
   return new Response(null, { status: 204 });
 }
