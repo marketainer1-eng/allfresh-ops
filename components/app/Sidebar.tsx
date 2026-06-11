@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Package, CalendarDays, Zap,
-  BarChart3, FolderOpen, LogOut, ChevronRight,
+  BarChart3, LineChart, FolderOpen, LogOut, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ const navItems = [
       { href: "/app/fruits", icon: Package, label: "과일 포트폴리오" },
       { href: "/app/calendar", icon: CalendarDays, label: "과일 캘린더" },
       { href: "/app/campaigns", icon: Zap, label: "캠페인 관리" },
+      { href: "/app/performance", icon: LineChart, label: "성과분석" },
       { href: "/app/reports", icon: BarChart3, label: "성과 리포트" },
     ],
   },
