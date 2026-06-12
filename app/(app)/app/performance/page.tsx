@@ -49,6 +49,9 @@ export default function PerformanceAnalysisPage() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [businessNote, setBusinessNote] = useState("");
+  const [cogsRate, setCogsRate] = useState("70");
+  const [feeRate, setFeeRate] = useState("6");
+  const [adCost, setAdCost] = useState("");
   const [metrics, setMetrics] = useState<PerfRequest | null>(null);
   const [result, setResult] = useState<PerfResponse | null>(null);
   const [computing, setComputing] = useState(false);
@@ -81,6 +84,11 @@ export default function PerformanceAnalysisPage() {
       const m = await computeMetricsFromFiles(files, {
         period: { start: start || undefined, end: end || undefined },
         businessNote: businessNote || undefined,
+        assumptions: {
+          cogsRate: Number(cogsRate) || undefined,
+          feeRate: Number(feeRate) || undefined,
+          adCost: Number(adCost) || undefined,
+        },
       });
       setMetrics(m);
       if (!m.channels?.length) {
@@ -208,6 +216,41 @@ export default function PerformanceAnalysisPage() {
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
           />
         </div>
+
+        {/* 기여이익·MER 가정값 (스마트스토어 export엔 원가·수수료가 없어 입력) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">원가율 (%)</label>
+            <input
+              type="number"
+              value={cogsRate}
+              onChange={(e) => setCogsRate(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">채널 수수료율 (%)</label>
+            <input
+              type="number"
+              value={feeRate}
+              onChange={(e) => setFeeRate(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">광고비 (원, 선택)</label>
+            <input
+              type="number"
+              value={adCost}
+              onChange={(e) => setAdCost(e.target.value)}
+              placeholder="0"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-gray-400">
+          스마트스토어 export엔 원가·수수료가 없어 가정값으로 기여이익·MER을 계산합니다. 실제 값으로 조정하세요.
+        </p>
 
         <button
           onClick={handleCompute}
