@@ -15,9 +15,37 @@ import type {
   AttributionRow,
   ChannelMetric,
   ChannelRole,
+  FunnelStage,
   PerfRequest,
   SeasonFlag,
 } from "@/lib/performanceTypes";
+
+// 퍼널(쇼핑 단계별 분석) 입력 → FunnelStage[]. 스마트스토어 "스토어 현황" 대시보드 기준
+// 노출(검색노출) → 상세조회 → 리뷰탐색 → 결제. 각 단계 전환율/이탈률 산출.
+export interface FunnelCounts {
+  impressions?: number; // 노출(검색 노출 수)
+  visits?: number; // 방문(상품상세 조회수)
+  explore?: number; // 탐색(리뷰 클릭수)
+  purchases?: number; // 구매(결제 건수/구매자수)
+}
+
+function buildFunnelStages(f: FunnelCounts): FunnelStage[] {
+  const seq: [string, number | undefined][] = [
+    ["노출", f.impressions],
+    ["상세조회", f.visits],
+    ["리뷰탐색", f.explore],
+    ["결제", f.purchases],
+  ];
+  const present = seq.filter(([, v]) => v != null && v > 0) as [string, number][];
+  return present.map(([stage, sessions], i) => {
+    const next = present[i + 1]?.[1];
+    const conversionRate =
+      next != null && sessions ? Math.round((next / sessions) * 1000) / 10 : undefined;
+    const churnRate =
+      conversionRate != null ? Math.round((100 - conversionRate) * 10) / 10 : undefined;
+    return { stage, sessions, conversionRate, churnRate };
+  });
+}
 
 // ───────────────────────── 파일 → 행 파싱 (브라우저) ─────────────────────────
 export type Row = Record<string, unknown>;
@@ -484,6 +512,8 @@ export interface ComputeOptions {
   businessNote?: string;
   // 기여이익·MER 계산용 가정값(파일에 없는 원가율/수수료율/광고비). 스마트스토어 경로에서 사용.
   assumptions?: CostAssumptions;
+  // 퍼널(쇼핑 단계별 분석) 입력값 — 파일이 아니라 대시보드 화면 수치라 직접 입력.
+  funnel?: FunnelCounts;
 }
 
 export async function computeMetricsFromFiles(
@@ -527,6 +557,15 @@ export async function computeMetricsFromFiles(
   }
 
   const channels = Array.from(channelsByName.values());
+
+  // 퍼널 입력이 있으면 판매처(스마트스토어) 채널에 부착 → 상세페이지 전환 병목 진단 가능.
+  if (opts.funnel) {
+    const stages = buildFunnelStages(opts.funnel);
+    if (stages.length >= 2) {
+      const target = channels.find((c) => c.role === "destination");
+      if (target) target.funnel = stages;
+    }
+  }
 
   // blendedRoas(MER) = Σ(판매처 순매출) ÷ Σ(광고비)
   const totalNet = channels

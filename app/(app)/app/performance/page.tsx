@@ -52,6 +52,10 @@ export default function PerformanceAnalysisPage() {
   const [cogsRate, setCogsRate] = useState("70");
   const [feeRate, setFeeRate] = useState("6");
   const [adCost, setAdCost] = useState("");
+  const [fImp, setFImp] = useState("");
+  const [fVis, setFVis] = useState("");
+  const [fExp, setFExp] = useState("");
+  const [fPur, setFPur] = useState("");
   const [metrics, setMetrics] = useState<PerfRequest | null>(null);
   const [result, setResult] = useState<PerfResponse | null>(null);
   const [computing, setComputing] = useState(false);
@@ -90,6 +94,12 @@ export default function PerformanceAnalysisPage() {
           cogsRate: Number(cogsRate) || undefined,
           feeRate: Number(feeRate) || undefined,
           adCost: Number(adCost) || undefined,
+        },
+        funnel: {
+          impressions: Number(fImp) || undefined,
+          visits: Number(fVis) || undefined,
+          explore: Number(fExp) || undefined,
+          purchases: Number(fPur) || undefined,
         },
       });
       setMetrics(m);
@@ -281,6 +291,19 @@ export default function PerformanceAnalysisPage() {
         <p className="text-xs text-gray-400">
           스마트스토어 export엔 원가·수수료가 없어 가정값으로 기여이익·MER을 계산합니다. 실제 값으로 조정하세요.
         </p>
+
+        {/* 퍼널(쇼핑 단계별 분석) — 선택 입력 */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            퍼널(쇼핑 단계별, 선택) — 노출 → 상세조회 → 리뷰클릭 → 결제건수
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <input type="number" value={fImp} onChange={(e) => setFImp(e.target.value)} placeholder="노출수" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            <input type="number" value={fVis} onChange={(e) => setFVis(e.target.value)} placeholder="상세조회수" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            <input type="number" value={fExp} onChange={(e) => setFExp(e.target.value)} placeholder="리뷰클릭수" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+            <input type="number" value={fPur} onChange={(e) => setFPur(e.target.value)} placeholder="결제건수" className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm" />
+          </div>
+        </div>
 
         <button
           onClick={handleCompute}
