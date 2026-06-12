@@ -3,12 +3,76 @@
 // route(인증 필요)와 demo route(공개)가 동일 로직을 공유하도록 분리한다.
 // ★ 설계 원칙: 입력은 "이미 계산된 지표(metrics=PerfRequest)". 여기서는 해석만 한다(수치 날조 금지).
 
+import Anthropic from "@anthropic-ai/sdk";
 import type {
   Insight,
   Objective,
   PerfRequest,
   PerfResponse,
 } from "@/lib/performanceTypes";
+
+// 출력 계약(PerfResponse)을 JSON 스키마로 명시 → Claude structured outputs로 스키마 보장.
+const PERF_RESPONSE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    executiveSummary: { type: "array", items: { type: "string" } },
+    insights: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          title: { type: "string" },
+          objective: {
+            type: "string",
+            enum: ["diagnosis", "acquisition", "retention"],
+          },
+          observation: { type: "string" },
+          interpretation: { type: "string" },
+          confidence: { type: "string", enum: ["확정", "유력", "가설"] },
+          action: { type: "string" },
+          verification: { type: "string" },
+          priority: { type: "string", enum: ["높음", "중간", "낮음"] },
+        },
+        required: [
+          "title",
+          "objective",
+          "observation",
+          "interpretation",
+          "confidence",
+          "action",
+          "verification",
+          "priority",
+        ],
+      },
+    },
+    risks: { type: "array", items: { type: "string" } },
+    dataLimits: { type: "array", items: { type: "string" } },
+  },
+  required: ["executiveSummary", "insights", "risks", "dataLimits"],
+} as const;
+
+// PerfResponse 정규화 — LLM 응답을 계약 타입으로 안전 변환(누락 필드 방어).
+function normalizePerfResponse(p: Record<string, unknown>): PerfResponse | null {
+  const arr = (v: unknown) => (Array.isArray(v) ? v : []);
+  if (!Array.isArray(p.insights)) return null;
+  return {
+    executiveSummary: arr(p.executiveSummary).map(String),
+    insights: arr(p.insights).map((i: Record<string, unknown>) => ({
+      title: String(i.title ?? ""),
+      objective: (i.objective as Objective) ?? "diagnosis",
+      observation: String(i.observation ?? ""),
+      interpretation: String(i.interpretation ?? ""),
+      confidence: (i.confidence as Insight["confidence"]) ?? "가설",
+      action: String(i.action ?? ""),
+      verification: String(i.verification ?? ""),
+      priority: (i.priority as Insight["priority"]) ?? "중간",
+    })),
+    risks: arr(p.risks).map(String),
+    dataLimits: arr(p.dataLimits).map(String),
+  };
+}
 
 // ───────────────────────── 방법론(시스템 프롬프트) ─────────────────────────
 const METHODOLOGY = `너는 올프레쉬(프리미엄 과일선물세트) 멀티채널 이커머스 성과분석가다.
@@ -66,6 +130,39 @@ ${JSON.stringify(body.channels ?? [], null, 2)}
 
 [어트리뷰션(추정·방향참고만, 매출 합산 금지)]
 ${JSON.stringify(body.attribution ?? [], null, 2)}`;
+}
+
+// Claude(api.anthropic.com) 해석 엔진 — 권장 경로.
+// 모델 기본값 claude-opus-4-8(ANTHROPIC_MODEL로 변경 가능). adaptive thinking + structured outputs.
+async function callClaude(
+  body: PerfRequest,
+  apiKey: string,
+): Promise<PerfResponse | null> {
+  try {
+    const client = new Anthropic({ apiKey });
+    const model = process.env.ANTHROPIC_MODEL || "claude-opus-4-8";
+    const res = await client.messages.create({
+      model,
+      max_tokens: 16000,
+      thinking: { type: "adaptive" },
+      system: METHODOLOGY,
+      messages: [{ role: "user", content: buildUserPrompt(body) }],
+      // output_config(effort/format)는 GA지만 SDK 타입이 늦을 수 있어 캐스팅.
+      output_config: {
+        effort: "medium",
+        format: { type: "json_schema", schema: PERF_RESPONSE_SCHEMA },
+      },
+    } as Anthropic.Messages.MessageCreateParamsNonStreaming);
+
+    const textBlock = res.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") return null;
+    // structured outputs면 순수 JSON. 혹시 펜스가 있으면 제거.
+    const raw = textBlock.text.trim().replace(/^```(?:json)?\s*|\s*```$/g, "");
+    return normalizePerfResponse(JSON.parse(raw));
+  } catch (e) {
+    console.error("analyze-performance Claude call failed:", e);
+    return null;
+  }
 }
 
 async function callOpenAI(
@@ -198,13 +295,18 @@ function generateFallback(body: PerfRequest): PerfResponse {
   };
 }
 
-// 공유 진입점: OPENAI_API_KEY 있으면 LLM 해석, 없거나 실패하면 규칙기반 폴백.
+// 공유 진입점: 해석 엔진 우선순위 = Claude(권장) → OpenAI → 규칙기반 폴백.
+// 키가 모두 없거나 호출 실패 시에도 규칙기반으로 안전하게 동작(수치 날조 없음).
 export async function analyzePerformance(
   body: PerfRequest,
 ): Promise<PerfResponse> {
+  const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   let result: PerfResponse | null = null;
-  if (OPENAI_API_KEY) {
+  if (ANTHROPIC_API_KEY) {
+    result = await callClaude(body, ANTHROPIC_API_KEY);
+  }
+  if (!result && OPENAI_API_KEY) {
     result = await callOpenAI(body, OPENAI_API_KEY);
   }
   if (!result) result = generateFallback(body);
