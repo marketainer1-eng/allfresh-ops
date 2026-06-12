@@ -26,6 +26,7 @@ model Workspace {
   fruitPerformances FruitPerformance[]
   fruitTasks       FruitTask[]
   fruitInsights    FruitInsight[]
+  performanceAnalyses PerformanceAnalysis[]
 
   @@map("workspaces")
 }
@@ -44,6 +45,7 @@ model User {
   workspace         Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   projects          Project[]          @relation("CreatedProjects")
   diagnosisSessions DiagnosisSession[] @relation("CreatedSessions")
+  performanceAnalyses PerformanceAnalysis[] @relation("CreatedAnalyses")
 
   @@map("users")
 }
@@ -386,4 +388,25 @@ model Report {
   session DiagnosisSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@map("reports")
+}
+
+// ─── 성과분석 결과 저장(History) ───────────────────────────────────────────────
+
+model PerformanceAnalysis {
+  id          String   @id @default(cuid())
+  workspaceId String   @map("workspace_id")
+  createdBy   String   @map("created_by")
+  title       String
+  periodStart String?  @map("period_start")
+  periodEnd   String?  @map("period_end")
+  seasonFlag  String?  @map("season_flag")
+  engine      String?  // claude | openai | rule
+  request     Json     // PerfRequest (계산된 metrics)
+  result      Json     // PerfResponse (해석 결과)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  creator   User      @relation("CreatedAnalyses", fields: [createdBy], references: [id])
+
+  @@map("performance_analyses")
 }

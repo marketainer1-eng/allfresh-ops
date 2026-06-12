@@ -57,6 +57,8 @@ export default function PerformanceAnalysisPage() {
   const [computing, setComputing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState<string | null>(null);
 
   function onPickFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? []);
@@ -105,6 +107,7 @@ export default function PerformanceAnalysisPage() {
     if (!metrics) return;
     setAnalyzing(true);
     setError(null);
+    setSavedId(null);
     try {
       const res = await fetch("/api/analyze-performance", {
         method: "POST",
@@ -120,6 +123,33 @@ export default function PerformanceAnalysisPage() {
       setError(err instanceof Error ? err.message : "분석 중 오류가 발생했습니다.");
     } finally {
       setAnalyzing(false);
+    }
+  }
+
+  async function handleSave() {
+    if (!metrics || !result) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const title =
+        `성과분석 ${metrics.period?.start ?? ""}${
+          metrics.period?.end ? `~${metrics.period.end}` : ""
+        }`.trim();
+      const res = await fetch("/api/performance-analyses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, request: metrics, result }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "저장에 실패했습니다.");
+      }
+      const d = await res.json();
+      setSavedId(d.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -328,6 +358,24 @@ export default function PerformanceAnalysisPage() {
       {/* 3. 결과 */}
       {result && (
         <section className="space-y-5">
+          {/* 저장 + History */}
+          <div className="flex items-center justify-between gap-2">
+            <a
+              href="/app/performance/history"
+              className="text-sm text-brand hover:underline"
+            >
+              저장된 분석(History) →
+            </a>
+            <button
+              onClick={handleSave}
+              disabled={saving || !!savedId}
+              className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-medium rounded-lg px-4 py-2 disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {savedId ? "저장됨 ✓" : "결과 저장"}
+            </button>
+          </div>
+
           {/* Executive Summary */}
           <div className="bg-gray-900 text-white rounded-xl p-6 space-y-2">
             <p className="text-xs uppercase tracking-wider text-gray-400">Executive Summary</p>
