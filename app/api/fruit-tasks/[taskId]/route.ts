@@ -17,7 +17,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
-  const { ctx, error } = await requireSession(req);
+  const { ctx, error } = await requireSession();
   if (error) return error;
   const { taskId } = await params;
 
@@ -37,7 +37,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
-  const { ctx, error } = await requireSession(req);
+  const { ctx, error } = await requireSession();
   if (error) return error;
   const { taskId } = await params;
 
@@ -62,7 +62,7 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
-  const { ctx, error } = await requireSession(req);
+  const { ctx, error } = await requireSession();
   if (error) return error;
   const { taskId } = await params;
 

@@ -21,7 +21,7 @@ const createSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  const { ctx, error } = await requireSession(req);
+  const { ctx, error } = await requireSession();
   if (error) return error;
 
   const { searchParams } = new URL(req.url);
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { ctx, error } = await requireSession(req);
+  const { ctx, error } = await requireSession();
   if (error) return error;
 
   const body = await req.json();

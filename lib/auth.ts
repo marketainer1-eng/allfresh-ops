@@ -9,6 +9,7 @@ function hashPassword(password: string) {
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true, // Vercel 프리뷰/프로덕션 도메인에서 호스트 신뢰(AUTH_URL 불필요)
   providers: [
     Credentials({
       name: "Credentials",

@@ -130,7 +130,7 @@ export function analyzeBottlenecks(
   // 3) 각 그룹의 집계 점수 계산 (가중 평균 + 볼륨 보너스)
   const stepResults: BottleneckResult[] = [];
 
-  for (const [step, stepSymptoms] of grouped.entries()) {
+  for (const [step, stepSymptoms] of Array.from(grouped.entries())) {
     const count = stepSymptoms.length;
 
     // 가중 평균 점수 (각 dimension별)
@@ -152,7 +152,7 @@ export function analyzeBottlenecks(
         tagFreq.set(t, (tagFreq.get(t) ?? 0) + 1);
       }
     }
-    const topTags = [...tagFreq.entries()]
+    const topTags = Array.from(tagFreq.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([t]) => t);
