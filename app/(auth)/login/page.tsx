@@ -44,7 +44,7 @@ export default function LoginPage() {
             <span className="text-white text-2xl font-bold">O</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">올프레쉬 OPS</h1>
-          <p className="text-gray-500 text-sm mt-1">고객경험 진단 플랫폼</p>
+          <p className="text-gray-500 text-sm mt-1">업무 에이전트</p>
         </div>
 
         {/* Card */}
