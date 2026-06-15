@@ -117,6 +117,33 @@ interface KamisData {
   mapping?: KamisMapping;
 }
 
+interface ForecastBreakdown {
+  factor: string;
+  impact: number;
+  description?: string;
+}
+interface ForecastInputs {
+  productName: string;
+  wholesalePrice?: number;
+  avgTemperature?: number;
+  rainfall?: number;
+  isHoliday?: boolean;
+  dayOfWeek?: string;
+  month?: number;
+  season?: string;
+  modelType?: string;
+}
+interface ForecastResult {
+  predictedDemand: number;
+  confidenceR2: number;
+  rmse: number;
+  mape: number;
+  featureImportance: Record<string, number>;
+  modelType: string;
+  recommendation: string;
+  breakdown: ForecastBreakdown[];
+}
+
 interface ChannelRec {
   channel: string;
   priority: "high" | "medium" | "low" | string;
@@ -261,6 +288,12 @@ export default function MarketingNewPage() {
   // KAMIS 농산물 시세
   const [kamisLoading, setKamisLoading] = useState(false);
   const [kamisData, setKamisData] = useState<KamisData | null>(null);
+
+  // 수요 예측 (기상청·KAMIS 데이터로 자동 산출)
+  const [forecast, setForecast] = useState<{
+    result: ForecastResult;
+    inputs: ForecastInputs;
+  } | null>(null);
 
   const showNotice = (type: Notice["type"], msg: string) => {
     setNotification({ type, msg });
@@ -495,12 +528,9 @@ export default function MarketingNewPage() {
   };
 
   // -------------------------------------------------------------------------
-  // 기상청 날씨
+  // 기상청 날씨 — collector(데이터 반환) + 버튼 핸들러(상태/알림)
   // -------------------------------------------------------------------------
-  const handleFetchWeather = async () => {
-    setWeatherLoading(true);
-    setWeatherData(null);
-    setWeatherError(null);
+  const collectWeather = async (): Promise<WeatherData | null> => {
     try {
       const res = await fetch("/api/marketing/kma-weather", {
         method: "POST",
@@ -508,7 +538,7 @@ export default function MarketingNewPage() {
         body: JSON.stringify({ nx: 60, ny: 127 }),
       });
       const data: WeatherData & { error?: string } = await res.json();
-      // 503(키 미설정) 또는 ok:false → weatherError로만 격리(결과 패널 영향 없음)
+      // 503(키 미설정)/ok:false → weatherError로만 격리(결과 패널 영향 없음)
       if (!res.ok || data?.ok === false) {
         const is401 =
           res.status === 401 ||
@@ -523,30 +553,40 @@ export default function MarketingNewPage() {
               ? "기상청 날씨 데이터를 가져오지 못했습니다. 인증키를 확인해 주세요. (HTTP 401)"
               : "기상청 날씨 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
         );
-        return;
+        return null;
       }
-      setWeatherData(data);
-      setWeatherError(null);
-      showNotice("success", "기상청 실시간 데이터가 수신되었습니다");
+      return data;
     } catch {
       setWeatherError(
         "기상청 날씨 데이터를 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.",
       );
-    } finally {
-      setWeatherLoading(false);
+      return null;
     }
   };
 
-  // -------------------------------------------------------------------------
-  // KAMIS 시세
-  // -------------------------------------------------------------------------
-  const handleFetchKamis = async () => {
-    if (!productName.trim()) {
-      showNotice("error", "먼저 상품명을 입력해 주세요");
-      return;
+  const handleFetchWeather = async () => {
+    setWeatherLoading(true);
+    setWeatherData(null);
+    setWeatherError(null);
+    const data = await collectWeather();
+    if (data) {
+      setWeatherData(data);
+      setWeatherError(null);
+      showNotice("success", "기상청 실시간 데이터가 수신되었습니다");
     }
-    setKamisLoading(true);
-    setKamisData(null);
+    setWeatherLoading(false);
+  };
+
+  // -------------------------------------------------------------------------
+  // KAMIS 시세 — collector(데이터 반환) + 버튼 핸들러(상태/알림)
+  // -------------------------------------------------------------------------
+  const collectKamis = async (
+    opts?: { silent?: boolean },
+  ): Promise<KamisData | null> => {
+    if (!productName.trim()) {
+      if (!opts?.silent) showNotice("error", "먼저 상품명을 입력해 주세요");
+      return null;
+    }
     try {
       const mRes = await fetch("/api/marketing/kamis-mappings");
       const mJson = await mRes.json();
@@ -555,9 +595,12 @@ export default function MarketingNewPage() {
         (m) => String(m.productName || "").trim() === productName.trim(),
       );
       if (!mapping) {
-        throw new Error(
-          "해당 상품의 KAMIS 매핑이 없습니다. 데이터 설정 메뉴에서 먼저 매핑해 주세요",
-        );
+        if (!opts?.silent) {
+          throw new Error(
+            "해당 상품의 KAMIS 매핑이 없습니다. 데이터 설정 메뉴에서 먼저 매핑해 주세요",
+          );
+        }
+        return null;
       }
       const res = await fetch("/api/marketing/kamis-price", {
         method: "POST",
@@ -573,14 +616,76 @@ export default function MarketingNewPage() {
       if (!res.ok || data?.ok === false) {
         const detail =
           data?.errorMsg || data?.error || `code: ${data?.errorCode || "unknown"}`;
-        throw new Error(`KAMIS 응답 오류 — ${detail}`);
+        if (!opts?.silent) throw new Error(`KAMIS 응답 오류 — ${detail}`);
+        return null;
       }
-      setKamisData({ ...data, mapping });
-      showNotice("success", `KAMIS 시세 ${data.items?.length || 0}건 수신`);
+      return { ...data, mapping };
     } catch (err) {
-      showNotice("error", formatErrorForNotice(err));
-    } finally {
-      setKamisLoading(false);
+      if (!opts?.silent) showNotice("error", formatErrorForNotice(err));
+      return null;
+    }
+  };
+
+  const handleFetchKamis = async () => {
+    setKamisLoading(true);
+    setKamisData(null);
+    const data = await collectKamis();
+    if (data) {
+      setKamisData(data);
+      showNotice("success", `KAMIS 시세 ${data.items?.length || 0}건 수신`);
+    }
+    setKamisLoading(false);
+  };
+
+  // -------------------------------------------------------------------------
+  // 수요 예측 — 기상청·KAMIS·날짜로 입력을 구성해 자체 모델 호출
+  // -------------------------------------------------------------------------
+  const deriveForecastInputs = (
+    wx: WeatherData | null,
+    kx: KamisData | null,
+  ): ForecastInputs => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][now.getDay()];
+    const season =
+      month === 12 || month <= 2 ? "겨울" : month <= 5 ? "봄" : month <= 8 ? "여름" : "가을";
+    // KAMIS 시세 평균 → 도매가 근사치
+    let wholesalePrice: number | undefined;
+    const prices = (kx?.items || [])
+      .map((it) => Number(String(it.price ?? it.dpr1 ?? "").replace(/[^0-9.]/g, "")))
+      .filter((n) => n > 0);
+    if (prices.length > 0) {
+      wholesalePrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
+    }
+    return {
+      productName: productName.trim(),
+      avgTemperature: wx?.temperature ?? undefined,
+      rainfall: wx?.rainfall ?? undefined,
+      wholesalePrice,
+      isHoliday: false,
+      dayOfWeek,
+      month,
+      season,
+      modelType: "auto",
+    };
+  };
+
+  const collectForecast = async (
+    wx: WeatherData | null,
+    kx: KamisData | null,
+  ): Promise<{ result: ForecastResult; inputs: ForecastInputs } | null> => {
+    const inputs = deriveForecastInputs(wx, kx);
+    try {
+      const res = await fetch("/api/marketing/forecast-demand", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(inputs),
+      });
+      const data = await res.json();
+      if (!res.ok || data?.error) return null;
+      return { result: data as ForecastResult, inputs };
+    } catch {
+      return null;
     }
   };
 
@@ -610,7 +715,20 @@ export default function MarketingNewPage() {
     }
     setAnalyzing(true);
     setResult(null);
+    setForecast(null);
+    setWeatherError(null);
     try {
+      // 1) 기상청·KAMIS 자동 수집 (이미 조회돼 있으면 재사용, 없으면 조용히 수집)
+      const wx = weatherData ?? (await collectWeather());
+      if (wx && !weatherData) setWeatherData(wx);
+      const kx = kamisData ?? (await collectKamis({ silent: true }));
+      if (kx && !kamisData) setKamisData(kx);
+
+      // 2) 수요 예측 (날씨·KAMIS 시세·날짜 기반 자체 모델)
+      const fc = await collectForecast(wx, kx);
+      if (fc) setForecast(fc);
+
+      // 3) AI 분석 (날씨·KAMIS·수요예측을 함께 전달)
       const payload = {
         category,
         inputMode: selfInputMode,
@@ -630,27 +748,36 @@ export default function MarketingNewPage() {
               results: (marketResearch.results || []).slice(0, 5),
             }
           : null,
-        weather: weatherData
+        weather: wx
           ? {
-              baseDate: weatherData.baseDate,
-              baseTime: weatherData.baseTime,
-              temperature: weatherData.temperature,
-              rainfall: weatherData.rainfall,
-              humidity: weatherData.humidity,
+              baseDate: wx.baseDate,
+              baseTime: wx.baseTime,
+              temperature: wx.temperature,
+              rainfall: wx.rainfall,
+              humidity: wx.humidity,
             }
           : null,
-        kamisPrices: kamisData
+        kamisPrices: kx
           ? {
-              mapping: kamisData.mapping
+              mapping: kx.mapping
                 ? {
-                    productName: kamisData.mapping.productName,
-                    categoryName: kamisData.mapping.categoryName,
-                    itemName: kamisData.mapping.itemName,
-                    kindName: kamisData.mapping.kindName,
+                    productName: kx.mapping.productName,
+                    categoryName: kx.mapping.categoryName,
+                    itemName: kx.mapping.itemName,
+                    kindName: kx.mapping.kindName,
                   }
                 : null,
-              period: kamisData.period,
-              items: (kamisData.items || []).slice(0, 10),
+              period: kx.period,
+              items: (kx.items || []).slice(0, 10),
+            }
+          : null,
+        demandForecast: fc
+          ? {
+              predictedDemand: fc.result.predictedDemand,
+              recommendation: fc.result.recommendation,
+              topFactors: (fc.result.breakdown || [])
+                .slice(0, 3)
+                .map((b) => ({ factor: b.factor, impact: b.impact })),
             }
           : null,
       };
@@ -740,6 +867,37 @@ export default function MarketingNewPage() {
         throw new Error(created?.error || "저장에 실패했습니다");
       }
       const newId = created?.id;
+
+      // 수요 예측을 분석에 연결해 저장 (실패해도 분석 저장은 유지)
+      if (newId && forecast) {
+        try {
+          await fetch("/api/marketing/forecasts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              analysisId: newId,
+              productName: forecast.inputs.productName || productName.trim(),
+              wholesalePrice: forecast.inputs.wholesalePrice,
+              avgTemperature: forecast.inputs.avgTemperature,
+              rainfall: forecast.inputs.rainfall,
+              isHoliday: forecast.inputs.isHoliday ?? false,
+              dayOfWeek: forecast.inputs.dayOfWeek,
+              month: forecast.inputs.month,
+              season: forecast.inputs.season,
+              modelType: forecast.inputs.modelType,
+              predictedDemand: forecast.result.predictedDemand,
+              confidenceR2: forecast.result.confidenceR2,
+              rmse: forecast.result.rmse,
+              mape: forecast.result.mape,
+              featureImportance: forecast.result.featureImportance,
+              recommendation: forecast.result.recommendation,
+            }),
+          });
+        } catch {
+          /* 수요예측 저장 실패는 무시 */
+        }
+      }
+
       showNotice("success", "분석 결과가 저장되었습니다");
       setTimeout(() => {
         router.push(newId ? `/app/marketing/history?focus=${newId}` : "/app/marketing/history");
@@ -1181,8 +1339,8 @@ export default function MarketingNewPage() {
           {/* Step 4: 실시간 시장 조사 (Perplexity + 기상청 + KAMIS) */}
           <Section
             step="04"
-            title="실시간 시장 조사"
-            desc="Perplexity · 기상청 · KAMIS에서 실시간 데이터를 자동 수집해 AI 분석에 함께 전달합니다"
+            title="실시간 시장 조사 · 수요 예측"
+            desc="AI 분석 실행 시 기상청·KAMIS 시세를 자동 수집하고 수요 예측까지 함께 산출해 분석에 반영합니다. 아래에서 미리 조회할 수도 있습니다."
           >
             <div className="space-y-5">
               {/* Perplexity */}
@@ -1470,6 +1628,78 @@ export default function MarketingNewPage() {
                   </div>
                 )}
               </div>
+
+              {/* 수요 예측 (기상청·KAMIS 기반 자동 산출) */}
+              <div className="space-y-3 pt-5 border-t border-stone-100">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 uppercase tracking-wider">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  수요 예측
+                </div>
+                {forecast ? (
+                  <div className="border border-violet-200 rounded-xl bg-violet-50/40 p-4 space-y-3">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <div className="text-[11px] text-violet-700 font-semibold">
+                          예상 수요 지수
+                        </div>
+                        <div className="text-2xl font-bold text-violet-800 leading-tight">
+                          {Math.round(forecast.result.predictedDemand).toLocaleString()}
+                        </div>
+                      </div>
+                      {forecast.result.confidenceR2 > 0 && (
+                        <div className="text-right">
+                          <div className="text-[10px] text-slate-500">모델 신뢰도(R²)</div>
+                          <div className="text-sm font-bold text-violet-700">
+                            {forecast.result.confidenceR2.toFixed(2)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {(forecast.result.breakdown || []).length > 0 && (
+                      <div className="space-y-1.5">
+                        {forecast.result.breakdown.slice(0, 4).map((b, i) => {
+                          const pos = b.impact >= 0;
+                          return (
+                            <div key={i} className="text-[11px]">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-slate-700 truncate">{b.factor}</span>
+                                <span
+                                  className={`font-semibold ${pos ? "text-emerald-700" : "text-red-600"}`}
+                                >
+                                  {pos ? "+" : ""}
+                                  {b.impact}%
+                                </span>
+                              </div>
+                              <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${pos ? "bg-emerald-500" : "bg-red-400"}`}
+                                  style={{
+                                    width: `${Math.min(100, Math.abs(b.impact))}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {forecast.result.recommendation && (
+                      <div className="text-[11px] text-violet-900 bg-white/70 rounded-lg p-2.5 leading-relaxed flex items-start gap-1.5">
+                        <Sparkles className="w-3 h-3 mt-0.5 shrink-0 text-violet-600" />
+                        <span>{forecast.result.recommendation}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-violet-200 bg-violet-50/30 p-3 text-[11px] text-violet-700 flex items-start gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      AI 분석을 실행하면 기상청 날씨와 KAMIS 시세를 활용해 수요를 예측하고
+                      발주·프로모션 전략을 함께 제안합니다.
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </Section>
 
@@ -1503,6 +1733,7 @@ export default function MarketingNewPage() {
             <ResultPanel
               loading={analyzing}
               result={result}
+              forecast={forecast?.result ?? null}
               currentCat={currentCat}
               onSave={handleSave}
               saving={saving}
@@ -1593,6 +1824,7 @@ function WeatherStat({
 function ResultPanel({
   loading,
   result,
+  forecast,
   currentCat,
   onSave,
   saving,
@@ -1600,6 +1832,7 @@ function ResultPanel({
 }: {
   loading: boolean;
   result: AnalyzeResult | null;
+  forecast: ForecastResult | null;
   currentCat?: CategoryDef;
   onSave: () => void;
   saving: boolean;
@@ -1765,6 +1998,45 @@ function ResultPanel({
         <div className="space-y-5">
           <ResultBlock label="가격 포지셔닝 제안" content={result.pricePositioning} onCopy={onCopy} />
           <ResultBlock label="경쟁상품 대비 차별점" content={result.differentiation} onCopy={onCopy} />
+          {forecast && (
+            <div>
+              <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                수요 예측 · 발주 제안
+              </h4>
+              <div className="border border-violet-200 rounded-xl bg-violet-50/40 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-violet-700 font-semibold">
+                    예상 수요 지수
+                  </span>
+                  <span className="text-lg font-bold text-violet-800">
+                    {Math.round(forecast.predictedDemand).toLocaleString()}
+                  </span>
+                </div>
+                {forecast.recommendation && (
+                  <p className="text-[11px] text-violet-900 leading-relaxed">
+                    {forecast.recommendation}
+                  </p>
+                )}
+                {(forecast.breakdown || []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {forecast.breakdown.slice(0, 4).map((b, i) => (
+                      <span
+                        key={i}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${
+                          b.impact >= 0
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                            : "bg-red-50 text-red-600 border-red-100"
+                        }`}
+                      >
+                        {b.factor} {b.impact >= 0 ? "+" : ""}
+                        {b.impact}%
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           <ChannelRecommendations channels={result.recommendedChannels || []} onCopy={onCopy} />
         </div>
       )}

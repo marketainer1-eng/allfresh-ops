@@ -61,6 +61,12 @@ interface AnalyzeRequest {
     marketResearch?: MarketResearchInput | null;
     weather?: WeatherInput | null;
     kamisPrices?: KamisPricesInput | null;
+    demandForecast?: DemandForecastInput | null;
+}
+interface DemandForecastInput {
+    predictedDemand?: number;
+    recommendation?: string;
+    topFactors?: Array<{ factor?: string; impact?: number }>;
 }
 interface ChannelRecommendation {
     channel: string;
@@ -231,6 +237,17 @@ function formatKamisPrices(kamis?: KamisPricesInput | null): string {
     }
     return lines.length > 0 ? lines.join("\n") : "(KAMIS 시세 데이터 없음)";
 }
+function formatForecast(fc?: DemandForecastInput | null): string {
+    if (!fc || fc.predictedDemand == null) return "(수요 예측 데이터 없음)";
+    const lines: string[] = [];
+    lines.push(`예상 수요 지수: ${Math.round(fc.predictedDemand)}`);
+    const factors = (fc.topFactors || [])
+        .filter((f) => f && f.factor)
+        .map((f) => `${f.factor}(${(f.impact ?? 0) >= 0 ? "+" : ""}${f.impact ?? 0}%)`);
+    if (factors.length > 0) lines.push(`핵심 수요 요인: ${factors.join(", ")}`);
+    if (fc.recommendation) lines.push(`발주·운영 권장: ${fc.recommendation}`);
+    return lines.join("\n");
+}
 const PROMPT_TEMPLATES: Record<string, string> = {
     single: `당신은 과일 이커머스 마케팅 전문가입니다. 다음 단품 과일 정보를 기반으로 마케팅 인사이트를 도출해 주세요.
 [기본 정보]
@@ -317,6 +334,12 @@ function buildPrompt(body: AnalyzeRequest): string {
     if (!kamisText.startsWith("(KAMIS")) {
         additionalSections.push(
             `[KAMIS 농산물 도·소매 시세 — 가격 포지셔닝 분석에 반드시 반영]\n${kamisText}`,
+        );
+    }
+    const forecastText = formatForecast(body.demandForecast);
+    if (!forecastText.startsWith("(수요 예측")) {
+        additionalSections.push(
+            `[수요 예측 (기상청·KAMIS 기반 자체 모델) — 시즌 캠페인 타이밍·물량·프로모션 전략 제안에 반드시 반영]\n${forecastText}`,
         );
     }
     if (additionalSections.length > 0) {
