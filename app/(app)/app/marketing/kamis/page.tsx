@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Database, Loader2, ArrowLeft, Save, Trash2, RefreshCw, Link as LinkIcon,
-  TrendingUp, Power,
+  Database, Check, AlertCircle, Save, Loader2, Package, Search,
+  RefreshCw, Link as LinkIcon, TrendingUp, ArrowLeft, Trash2, Power,
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
 
-// ── KAMIS 코드 데이터 (KamisMapping.jsx에서 이식) ─────────────────────
+// ── KAMIS 코드 데이터 (KamisMapping.jsx에서 verbatim 이식) ──────────────
 const KAMIS_CATEGORIES = [
   { code: "100", name: "식량작물" },
   { code: "200", name: "채소류" },
@@ -99,15 +98,21 @@ const RANK_CODES = [
 interface Mapping {
   id: string;
   productName: string;
+  analysisId?: string | null;
   categoryCode: string;
-  categoryName: string | null;
+  categoryName?: string | null;
   itemCode: string;
-  itemName: string | null;
-  kindCode: string | null;
-  kindName: string | null;
-  rankCode: string | null;
+  itemName?: string | null;
+  kindCode?: string | null;
+  kindName?: string | null;
+  rankCode?: string | null;
   isActive: boolean;
-  createdAt: string;
+}
+
+interface ProductRow {
+  name: string;
+  analysisId: string | null;
+  category: string;
 }
 
 interface PriceResult {
@@ -118,92 +123,137 @@ interface PriceResult {
   items?: Record<string, string>[];
 }
 
-function fmt(d: Date) {
+interface FormState {
+  categoryCode: string;
+  itemCode: string;
+  kindCode: string;
+  rankCode: string;
+}
+
+interface Notification {
+  type: "success" | "error";
+  msg: string;
+}
+
+function fmt(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-export default function KamisPage() {
+export default function KamisMappingPage() {
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [mappings, setMappings] = useState<Mapping[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedProduct, setSelectedProduct] = useState<ProductRow | null>(null);
+  const [form, setForm] = useState<FormState>({
+    categoryCode: "400",
+    itemCode: "",
+    kindCode: "",
+    rankCode: "04",
+  });
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [notification, setNotification] = useState<Notification | null>(null);
   const [testing, setTesting] = useState(false);
-  const [notice, setNotice] = useState<{ type: "ok" | "err"; msg: string } | null>(null);
   const [priceResult, setPriceResult] = useState<PriceResult | null>(null);
 
-  const [editId, setEditId] = useState<string | null>(null);
-  const [productName, setProductName] = useState("");
-  const [categoryCode, setCategoryCode] = useState("400");
-  const [itemCode, setItemCode] = useState("");
-  const [kindCode, setKindCode] = useState("");
-  const [rankCode, setRankCode] = useState("04");
+  const showNotice = (type: "success" | "error", msg: string) => {
+    setNotification({ type, msg });
+    setTimeout(() => setNotification(null), 3500);
+  };
 
-  function flash(type: "ok" | "err", msg: string) {
-    setNotice({ type, msg });
-    setTimeout(() => setNotice(null), 3500);
-  }
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function load() {
+  const findMapping = (productName: string, list: Mapping[]): Mapping | undefined =>
+    list.find((m) => String(m.productName || "").trim() === productName);
+
+  const selectProductInternal = (product: ProductRow, mList: Mapping[]) => {
+    setSelectedProduct(product);
+    setPriceResult(null);
+    const existing = findMapping(product.name, mList);
+    if (existing) {
+      setForm({
+        categoryCode: existing.categoryCode || "400",
+        itemCode: existing.itemCode || "",
+        kindCode: existing.kindCode || "",
+        rankCode: existing.rankCode || "04",
+      });
+    } else {
+      setForm({ categoryCode: "400", itemCode: "", kindCode: "", rankCode: "04" });
+    }
+  };
+
+  const loadData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/marketing/kamis-mappings");
-      const json = await res.json();
-      setMappings(json.data ?? []);
+      const [aRes, mRes] = await Promise.all([
+        fetch("/api/marketing/analyses?pageSize=100"),
+        fetch("/api/marketing/kamis-mappings"),
+      ]);
+      const aJson = await aRes.json();
+      const mJson = await mRes.json();
+      const aList: { id: string; productName?: string | null; category?: string | null }[] = aJson?.data || [];
+      const mList: Mapping[] = mJson?.data || [];
+
+      const list: ProductRow[] = [];
+      const seen = new Set<string>();
+      aList.forEach((a) => {
+        const name = String(a.productName || "").trim();
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          list.push({ name, analysisId: a.id, category: a.category || "" });
+        }
+      });
+      mList.forEach((m) => {
+        const name = String(m.productName || "").trim();
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          list.push({ name, analysisId: m.analysisId || null, category: "" });
+        }
+      });
+      setProducts(list);
+      setMappings(mList);
+      if (list.length > 0 && !selectedProduct) {
+        selectProductInternal(list[0], mList);
+      }
+    } catch (e) {
+      console.error(e);
+      showNotice("error", "데이터를 불러오지 못했습니다");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const itemOptions = KAMIS_ITEMS[categoryCode] ?? [];
-  const kindOptions = KAMIS_KINDS[itemCode] ?? [];
-
-  function resetForm() {
-    setEditId(null);
-    setProductName("");
-    setCategoryCode("400");
-    setItemCode("");
-    setKindCode("");
-    setRankCode("04");
-    setPriceResult(null);
-  }
-
-  function startEdit(m: Mapping) {
-    setEditId(m.id);
-    setProductName(m.productName);
-    setCategoryCode(m.categoryCode || "400");
-    setItemCode(m.itemCode || "");
-    setKindCode(m.kindCode || "");
-    setRankCode(m.rankCode || "04");
-    setPriceResult(null);
-  }
-
-  function buildPayload() {
-    const category = KAMIS_CATEGORIES.find((c) => c.code === categoryCode);
-    const item = (KAMIS_ITEMS[categoryCode] ?? []).find((i) => i.code === itemCode);
-    const kind = (KAMIS_KINDS[itemCode] ?? []).find((k) => k.code === kindCode);
-    return {
-      productName: productName.trim(),
-      categoryCode,
-      categoryName: category?.name ?? "",
-      itemCode,
-      itemName: item?.name ?? "",
-      kindCode: kindCode || undefined,
-      kindName: kind?.name ?? "",
-      rankCode: rankCode || "04",
-    };
-  }
-
-  async function save() {
-    if (!productName.trim()) return flash("err", "상품명을 입력하세요.");
-    if (!categoryCode || !itemCode) return flash("err", "부류와 품목 코드는 필수입니다.");
+  const handleSave = async () => {
+    if (!selectedProduct) return;
+    if (!form.categoryCode || !form.itemCode) {
+      showNotice("error", "부류와 품목 코드는 필수입니다");
+      return;
+    }
     setSaving(true);
     try {
-      const payload = buildPayload();
-      const res = editId
-        ? await fetch(`/api/marketing/kamis-mappings/${editId}`, {
+      const category = KAMIS_CATEGORIES.find((c) => c.code === form.categoryCode);
+      const items = KAMIS_ITEMS[form.categoryCode] || [];
+      const item = items.find((i) => i.code === form.itemCode);
+      const kinds = KAMIS_KINDS[form.itemCode] || [];
+      const kind = kinds.find((k) => k.code === form.kindCode);
+      const payload = {
+        productName: selectedProduct.name,
+        analysisId: selectedProduct.analysisId || null,
+        categoryCode: form.categoryCode,
+        categoryName: category?.name || "",
+        itemCode: form.itemCode,
+        itemName: item?.name || "",
+        kindCode: form.kindCode || undefined,
+        kindName: kind?.name || "",
+        rankCode: form.rankCode || "04",
+        isActive: true,
+      };
+      const existing = findMapping(selectedProduct.name, mappings);
+      const res = existing
+        ? await fetch(`/api/marketing/kamis-mappings/${existing.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -211,43 +261,51 @@ export default function KamisPage() {
         : await fetch("/api/marketing/kamis-mappings", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...payload, isActive: true }),
+            body: JSON.stringify(payload),
           });
-      if (!res.ok) throw new Error();
-      flash("ok", "매핑이 저장되었습니다.");
-      resetForm();
-      await load();
-    } catch {
-      flash("err", "저장에 실패했습니다.");
+      if (!res.ok) throw new Error("저장 실패");
+      showNotice("success", "매핑이 저장되었습니다");
+      await loadData();
+    } catch (e) {
+      showNotice("error", e instanceof Error ? e.message : "저장 실패");
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  async function toggleActive(m: Mapping) {
-    const res = await fetch(`/api/marketing/kamis-mappings/${m.id}`, {
+  const handleToggleActive = async (mapping: Mapping) => {
+    const res = await fetch(`/api/marketing/kamis-mappings/${mapping.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !m.isActive }),
+      body: JSON.stringify({ isActive: !mapping.isActive }),
     });
     if (res.ok) {
-      setMappings((prev) =>
-        prev.map((x) => (x.id === m.id ? { ...x, isActive: !x.isActive } : x)),
-      );
+      setMappings((prev) => prev.map((m) => (m.id === mapping.id ? { ...m, isActive: !m.isActive } : m)));
+      showNotice("success", `매핑을 ${mapping.isActive ? "비활성화" : "활성화"}했습니다`);
+    } else {
+      showNotice("error", "상태 변경에 실패했습니다");
     }
-  }
+  };
 
-  async function remove(id: string) {
-    if (!confirm("이 매핑을 삭제할까요?")) return;
-    const res = await fetch(`/api/marketing/kamis-mappings/${id}`, { method: "DELETE" });
+  const handleDelete = async (mapping: Mapping) => {
+    if (!confirm(`'${mapping.productName}' 매핑을 삭제할까요?`)) return;
+    const res = await fetch(`/api/marketing/kamis-mappings/${mapping.id}`, { method: "DELETE" });
     if (res.ok) {
-      setMappings((prev) => prev.filter((x) => x.id !== id));
-      if (editId === id) resetForm();
+      showNotice("success", "매핑을 삭제했습니다");
+      await loadData();
+      if (selectedProduct?.name === mapping.productName) {
+        setForm({ categoryCode: "400", itemCode: "", kindCode: "", rankCode: "04" });
+      }
+    } else {
+      showNotice("error", "삭제에 실패했습니다");
     }
-  }
+  };
 
-  async function testPrice() {
-    if (!categoryCode || !itemCode) return flash("err", "먼저 부류·품목을 선택해 주세요.");
+  const handleTestFetch = async () => {
+    if (!form.categoryCode || !form.itemCode) {
+      showNotice("error", "먼저 부류·품목을 선택해 주세요");
+      return;
+    }
     setTesting(true);
     setPriceResult(null);
     try {
@@ -258,306 +316,412 @@ export default function KamisPage() {
         body: JSON.stringify({
           startday: fmt(new Date(today.getTime() - 30 * 86400000)),
           endday: fmt(today),
-          categoryCode,
-          itemCode,
-          kindCode: kindCode || undefined,
+          categoryCode: form.categoryCode,
+          itemCode: form.itemCode,
+          kindCode: form.kindCode || undefined,
           productClsCode: "01",
-          rankCode: rankCode || "04",
+          rankCode: form.rankCode || "04",
           countryCode: "1101",
           convertKgYn: "N",
         }),
       });
       if (res.status === 503) {
-        flash("err", "KAMIS 키 미설정 — 환경변수를 확인해 주세요.");
+        showNotice("error", "KAMIS 인증키가 설정되지 않았습니다 — 환경변수를 확인해 주세요");
         return;
       }
       const data = (await res.json()) as PriceResult;
       setPriceResult(data);
       if (data.ok) {
-        flash("ok", `KAMIS 응답 수신 (${data.items?.length ?? 0}건)`);
+        showNotice("success", `KAMIS 응답 수신 (${data.items?.length || 0}건)`);
       } else {
-        flash("err", `KAMIS 오류 — ${data.errorMsg || data.errorCode || "unknown"}`);
+        const detail = data.errorMsg || `code: ${data.errorCode || "unknown"}`;
+        showNotice("error", `KAMIS 응답 오류 — ${detail}`);
       }
-    } catch {
-      flash("err", "KAMIS 조회 중 오류가 발생했습니다.");
+    } catch (e) {
+      showNotice("error", e instanceof Error ? e.message : "KAMIS 조회 실패");
     } finally {
       setTesting(false);
     }
-  }
+  };
 
-  const inputCls =
-    "w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand disabled:bg-gray-50 disabled:text-gray-400";
+  const filteredProducts = useMemo(() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, searchInput]);
 
-  const activeCount = useMemo(() => mappings.filter((m) => m.isActive).length, [mappings]);
+  const mappedCount = useMemo(
+    () => products.filter((p) => findMapping(p.name, mappings)).length,
+    [products, mappings],
+  );
+
+  const itemOptions = KAMIS_ITEMS[form.categoryCode] || [];
+  const kindOptions = KAMIS_KINDS[form.itemCode] || [];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <Link
-          href="/app/marketing"
-          className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-1"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" /> 마케팅 대시보드
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Database className="w-6 h-6 text-brand" />
-          KAMIS 매핑
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          자사 상품을 KAMIS 농산물유통정보(부류·품목·품종) 코드와 연결하면 일별 도·소매 시세를 자동으로 받아올 수 있습니다.
-        </p>
-      </div>
-
-      {notice && (
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      {/* Notification */}
+      {notification && (
         <div
-          className={`text-sm rounded-lg px-3 py-2 border ${
-            notice.type === "ok"
-              ? "bg-brand-muted text-brand border-brand/20"
-              : "bg-red-50 text-red-600 border-red-100"
+          className={`fixed top-20 right-4 z-50 max-w-xs p-3.5 rounded-xl shadow-lg text-sm font-medium border ${
+            notification.type === "success"
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-red-50 text-red-800 border-red-200"
           }`}
         >
-          {notice.msg}
+          <div className="flex items-start gap-2">
+            {notification.type === "success" ? (
+              <Check className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            )}
+            <span>{notification.msg}</span>
+          </div>
         </div>
       )}
 
-      <div className="grid lg:grid-cols-5 gap-6">
-        {/* 목록 */}
-        <div className="lg:col-span-2 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-900">
-              매핑 목록 ({mappings.length}) · 활성 {activeCount}
-            </div>
-            <button onClick={resetForm} className="text-xs text-brand font-medium hover:underline">
-              + 새 매핑
-            </button>
+      <div className="mb-6">
+        <Link
+          href="/app/marketing"
+          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 mb-2"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> 마케팅 대시보드
+        </Link>
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+            <Database className="w-5 h-5 text-white" />
           </div>
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="w-5 h-5 animate-spin text-gray-300" />
-            </div>
-          ) : mappings.length === 0 ? (
-            <div className="text-sm text-gray-400 bg-white border border-gray-100 rounded-xl p-6 text-center">
-              아직 매핑이 없습니다. 우측에서 새 매핑을 추가하세요.
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {mappings.map((m) => (
-                <div
-                  key={m.id}
-                  className={`bg-white rounded-xl border p-4 ${
-                    editId === m.id ? "border-brand/40" : "border-gray-100"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <button onClick={() => startEdit(m)} className="text-left min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{m.productName}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">
-                        {m.categoryName} · {m.itemName}
-                        {m.kindName ? ` · ${m.kindName}` : ""}
-                        <span className="text-gray-400 ml-1">
-                          ({m.categoryCode}/{m.itemCode}{m.kindCode ? `/${m.kindCode}` : ""})
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">{formatDate(m.createdAt)}</p>
-                    </button>
-                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => toggleActive(m)}
-                        className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                          m.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        <Power className="w-3 h-3" />
-                        {m.isActive ? "활성" : "비활성"}
-                      </button>
-                      <button
-                        onClick={() => remove(m.id)}
-                        className="text-gray-300 hover:text-red-500"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+              데이터 설정 · 상품-KAMIS 품목 매핑
+            </h2>
+            <p className="text-sm text-slate-600 mt-0.5">
+              자사 상품을 KAMIS 농산물유통정보(부류·품목·품종) 코드와 연결하면
+              일별 도·소매 시세를 자동으로 받아올 수 있습니다.
+            </p>
+          </div>
         </div>
+      </div>
 
-        {/* 폼 */}
-        <div className="lg:col-span-3">
-          <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
-            <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-              <LinkIcon className="w-4 h-4 text-brand" />
-              {editId ? "매핑 수정" : "새 KAMIS 매핑"}
-            </div>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        <StatCard label="전체 상품" value={products.length} icon={Package} color="text-slate-900" iconBg="bg-slate-100" iconColor="text-slate-600" />
+        <StatCard label="매핑 완료" value={mappedCount} icon={Check} color="text-emerald-700" iconBg="bg-emerald-100" iconColor="text-emerald-600" />
+        <StatCard label="매핑 필요" value={Math.max(0, products.length - mappedCount)} icon={AlertCircle} color="text-amber-700" iconBg="bg-amber-100" iconColor="text-amber-600" />
+      </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                상품명 <span className="text-red-500">*</span>
-              </label>
-              <input
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="예: 성주 꿀 샤인머스캣 2kg"
-                className={inputCls}
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                부류 (Category) <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={categoryCode}
-                onChange={(e) => {
-                  setCategoryCode(e.target.value);
-                  setItemCode("");
-                  setKindCode("");
-                }}
-                className={inputCls}
-              >
-                <option value="">부류 선택</option>
-                {KAMIS_CATEGORIES.map((c) => (
-                  <option key={c.code} value={c.code}>[{c.code}] {c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                품목 (Item) <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={itemCode}
-                onChange={(e) => {
-                  setItemCode(e.target.value);
-                  setKindCode("");
-                }}
-                disabled={!categoryCode || itemOptions.length === 0}
-                className={inputCls}
-              >
-                <option value="">품목 선택</option>
-                {itemOptions.map((i) => (
-                  <option key={i.code} value={i.code}>[{i.code}] {i.name}</option>
-                ))}
-              </select>
-              {categoryCode && itemOptions.length === 0 && (
-                <p className="text-[11px] text-gray-500 mt-1">이 부류에 사전 정의된 품목이 없습니다.</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">품종 (Kind)</label>
-              <select
-                value={kindCode}
-                onChange={(e) => setKindCode(e.target.value)}
-                disabled={!itemCode || kindOptions.length === 0}
-                className={inputCls}
-              >
-                <option value="">품종 선택 (선택사항)</option>
-                {kindOptions.map((k) => (
-                  <option key={k.code} value={k.code}>[{k.code}] {k.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">등급 (Rank)</label>
-              <div className="flex gap-2">
-                {RANK_CODES.map((r) => (
-                  <button
-                    key={r.code}
-                    type="button"
-                    onClick={() => setRankCode(r.code)}
-                    className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      rankCode === r.code
-                        ? "bg-brand-muted text-brand border-brand/40"
-                        : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-                    }`}
-                  >
-                    [{r.code}] {r.name}
-                  </button>
-                ))}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Left: 자사 상품 목록 */}
+        <div className="lg:col-span-2">
+          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 py-3 border-b border-stone-100 bg-stone-50/60">
+              <div className="text-xs font-semibold text-slate-700 mb-2">
+                자사 상품 ({filteredProducts.length})
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="상품명 검색..."
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-stone-200 bg-white text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                />
               </div>
             </div>
-
-            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={testPrice}
-                disabled={!categoryCode || !itemCode || testing}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-white border border-brand/30 text-brand hover:bg-brand-muted px-4 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50"
-              >
-                {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                시세 조회 테스트
-              </button>
-              <button
-                type="button"
-                onClick={save}
-                disabled={saving}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-white px-4 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-60"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {editId ? "매핑 수정" : "매핑 저장"}
-              </button>
+            <div className="max-h-[640px] overflow-y-auto divide-y divide-stone-100">
+              {loading && products.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-500">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                  불러오는 중...
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="p-8 text-center text-sm text-slate-500">
+                  표시할 상품이 없습니다.<br />
+                  먼저 새 분석을 만들어 상품을 등록해 주세요.
+                </div>
+              ) : (
+                filteredProducts.map((p, i) => {
+                  const mapping = findMapping(p.name, mappings);
+                  const active = selectedProduct?.name === p.name;
+                  return (
+                    <div
+                      key={`${p.name}-${i}`}
+                      className={`w-full transition-all border-l-4 ${
+                        active ? "bg-emerald-50 border-emerald-500" : "border-transparent hover:bg-stone-50"
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => selectProductInternal(p, mappings)}
+                          className="flex items-start gap-2 text-left min-w-0 flex-1"
+                        >
+                          <div className="flex-shrink-0 mt-0.5">
+                            {mapping ? (
+                              <span className="text-emerald-600 text-sm leading-none">✅</span>
+                            ) : (
+                              <span className="text-amber-500 text-sm leading-none">⚠️</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold text-slate-900 truncate">{p.name}</div>
+                            {mapping ? (
+                              <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                                {mapping.categoryName} · {mapping.itemName}
+                                {mapping.kindName ? ` · ${mapping.kindName}` : ""}
+                                <span className="ml-1 text-slate-400">
+                                  ({mapping.categoryCode}/{mapping.itemCode}
+                                  {mapping.kindCode ? `/${mapping.kindCode}` : ""})
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-amber-600 mt-0.5">매핑 필요</div>
+                            )}
+                          </div>
+                        </button>
+                        {mapping && (
+                          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleActive(mapping)}
+                              className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                                mapping.isActive ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                              }`}
+                            >
+                              <Power className="w-3 h-3" />
+                              {mapping.isActive ? "활성" : "비활성"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(mapping)}
+                              className="text-slate-300 hover:text-red-500"
+                              aria-label="매핑 삭제"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-
-            {priceResult && <PriceResultPanel data={priceResult} />}
           </div>
+        </div>
+
+        {/* Right: KAMIS 코드 매핑 폼 */}
+        <div className="lg:col-span-3">
+          {!selectedProduct ? (
+            <div className="bg-white border-2 border-dashed border-stone-300 rounded-2xl p-10 text-center">
+              <LinkIcon className="w-10 h-10 text-stone-300 mx-auto mb-3" />
+              <p className="text-sm text-slate-500">
+                좌측에서 상품을 선택해 KAMIS 코드를 매핑하세요.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white border border-stone-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-stone-100 bg-gradient-to-r from-emerald-50 to-cyan-50">
+                <div className="flex items-center gap-2 text-xs text-emerald-700 font-semibold uppercase tracking-wider mb-1">
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  KAMIS 코드 매핑
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">{selectedProduct.name}</h3>
+              </div>
+              <div className="p-5 space-y-4" role="form" aria-label="KAMIS 매핑 폼">
+                <FormField label="부류 (Category)" required>
+                  <select
+                    value={form.categoryCode}
+                    onChange={(e) => setForm({ ...form, categoryCode: e.target.value, itemCode: "", kindCode: "" })}
+                    className="w-full px-3 py-2.5 rounded-lg border border-stone-300 bg-white text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  >
+                    <option value="">부류 선택</option>
+                    {KAMIS_CATEGORIES.map((c) => (
+                      <option key={c.code} value={c.code}>[{c.code}] {c.name}</option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <FormField label="품목 (Item)" required>
+                  <select
+                    value={form.itemCode}
+                    onChange={(e) => setForm({ ...form, itemCode: e.target.value, kindCode: "" })}
+                    disabled={!form.categoryCode || itemOptions.length === 0}
+                    className="w-full px-3 py-2.5 rounded-lg border border-stone-300 bg-white text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:bg-stone-50 disabled:text-slate-400"
+                  >
+                    <option value="">품목 선택</option>
+                    {itemOptions.map((i) => (
+                      <option key={i.code} value={i.code}>[{i.code}] {i.name}</option>
+                    ))}
+                  </select>
+                  {form.categoryCode && itemOptions.length === 0 && (
+                    <p className="text-[11px] text-slate-500 mt-1">이 부류에 사전 정의된 품목이 없습니다.</p>
+                  )}
+                </FormField>
+
+                <FormField label="품종 (Kind)">
+                  <select
+                    value={form.kindCode}
+                    onChange={(e) => setForm({ ...form, kindCode: e.target.value })}
+                    disabled={!form.itemCode || kindOptions.length === 0}
+                    className="w-full px-3 py-2.5 rounded-lg border border-stone-300 bg-white text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 disabled:bg-stone-50 disabled:text-slate-400"
+                  >
+                    <option value="">품종 선택 (선택사항)</option>
+                    {kindOptions.map((k) => (
+                      <option key={k.code} value={k.code}>[{k.code}] {k.name}</option>
+                    ))}
+                  </select>
+                </FormField>
+
+                <FormField label="등급 (Rank)">
+                  <div className="flex gap-2">
+                    {RANK_CODES.map((r) => {
+                      const active = form.rankCode === r.code;
+                      return (
+                        <button
+                          key={r.code}
+                          type="button"
+                          onClick={() => setForm({ ...form, rankCode: r.code })}
+                          className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-all ${
+                            active
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                              : "bg-white text-slate-700 border-stone-200 hover:border-stone-300"
+                          }`}
+                        >
+                          [{r.code}] {r.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </FormField>
+
+                {/* Actions */}
+                <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-stone-100">
+                  <button
+                    type="button"
+                    onClick={handleTestFetch}
+                    disabled={!form.categoryCode || !form.itemCode || testing}
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50 px-4 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    <span>KAMIS 가격 조회 테스트</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={!form.categoryCode || !form.itemCode || saving}
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-[#15803D] hover:bg-[#166534] text-white px-4 py-2.5 rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    <span>매핑 저장</span>
+                  </button>
+                </div>
+
+                {priceResult && <PriceResultPanel data={priceResult} />}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function PriceResultPanel({ data }: { data: PriceResult }) {
-  const items = Array.isArray(data.items) ? data.items : [];
-  const period = data.period || {};
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  color,
+  iconBg,
+  iconColor,
+}: {
+  label: string;
+  value: number;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  iconBg: string;
+  iconColor: string;
+}) {
   return (
-    <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-700">
-          <TrendingUp className="w-4 h-4 text-brand" /> KAMIS 시세 조회 결과
+    <div className="bg-white border border-stone-200 rounded-xl p-3 md:p-4 shadow-sm">
+      <div className="flex items-center gap-2 mb-1.5">
+        <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center`}>
+          <Icon className={`w-4 h-4 ${iconColor}`} />
+        </div>
+        <span className="text-xs text-slate-500 font-medium">{label}</span>
+      </div>
+      <div className={`text-xl md:text-2xl font-bold ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function PriceResultPanel({ data }: { data: PriceResult }) {
+  const items = Array.isArray(data?.items) ? data.items : [];
+  const errorCode = data?.errorCode;
+  const ok = data?.ok;
+  const period = data?.period || {};
+  return (
+    <div className="bg-stone-50 border border-stone-200 rounded-xl p-4">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-emerald-600" />
+          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            KAMIS 가격 조회 결과
+          </h4>
         </div>
         {period.startday && period.endday && (
-          <span className="text-[10px] text-gray-400">{period.startday} ~ {period.endday}</span>
+          <span className="text-[10px] text-slate-500">{period.startday} ~ {period.endday}</span>
         )}
       </div>
-      {!data.ok ? (
+      {!ok ? (
         <p className="text-xs text-red-600">
-          {data.errorMsg || `KAMIS 응답 오류 (code: ${data.errorCode || "unknown"})`}
+          {data.errorMsg || `KAMIS 응답 오류 (code: ${errorCode || "unknown"}). 인증키/사용자 ID가 올바른지 확인해 주세요.`}
         </p>
       ) : items.length === 0 ? (
-        <p className="text-xs text-gray-500">해당 기간의 시세 데이터가 없습니다.</p>
+        <p className="text-xs text-slate-500">해당 기간의 가격 데이터가 없습니다.</p>
       ) : (
-        <div className="space-y-1.5 max-h-64 overflow-y-auto">
-          {items.slice(0, 15).map((it, i) => {
+        <div className="space-y-1.5 max-h-56 overflow-y-auto">
+          {items.slice(0, 12).map((it, i) => {
             const price = it.price || it.dpr1 || "";
             const numPrice = Number(String(price).replace(/[^0-9.-]/g, ""));
             return (
-              <div
-                key={i}
-                className="bg-white border border-gray-100 rounded-lg px-3 py-2 text-xs flex items-center justify-between gap-2"
-              >
+              <div key={i} className="bg-white border border-stone-200 rounded-lg px-3 py-2 text-xs flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="font-semibold text-gray-800 truncate">
-                    {it.itemname || it.item_name || "품목"}
+                  <div className="font-semibold text-slate-800 truncate">
+                    {it.itemname || it.item_name || it.productName || "품목"}
                     {(it.kindname || it.kind_name) && ` · ${it.kindname || it.kind_name}`}
                   </div>
-                  <div className="text-[10px] text-gray-400">
+                  <div className="text-[10px] text-slate-500">
                     {it.regday || it.date || ""} {it.countyname || it.county_name || ""}
                   </div>
                 </div>
-                <div className="font-bold text-brand-dark whitespace-nowrap">
+                <div className="font-bold text-emerald-700 whitespace-nowrap">
                   {numPrice ? numPrice.toLocaleString() : price || "-"}
-                  <span className="text-[10px] text-gray-400 ml-0.5">원</span>
+                  <span className="text-[10px] text-slate-500 ml-0.5">원</span>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      <details className="mt-2">
+        <summary className="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600">원본 응답 보기</summary>
+        <pre className="mt-1 text-[10px] text-slate-600 bg-white p-2 rounded border border-stone-200 max-h-40 overflow-auto">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      </details>
     </div>
   );
 }
