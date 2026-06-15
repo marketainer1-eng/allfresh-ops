@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Package, CalendarDays, Zap,
   BarChart3, LineChart, FolderOpen, LogOut, ChevronRight,
+  Sparkles, History, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,14 @@ const navItems = [
       { href: "/app/campaigns", icon: Zap, label: "캠페인 관리" },
       { href: "/app/performance", icon: LineChart, label: "성과분석" },
       { href: "/app/reports", icon: BarChart3, label: "성과 리포트" },
+    ],
+  },
+  {
+    group: "마케팅 에이전트",
+    items: [
+      { href: "/app/marketing", icon: Megaphone, label: "마케팅 대시보드", exact: true },
+      { href: "/app/marketing/new", icon: Sparkles, label: "새 분석" },
+      { href: "/app/marketing/history", icon: History, label: "분석 이력" },
     ],
   },
   {
