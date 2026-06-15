@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Package, CalendarDays, Zap,
   BarChart3, LineChart, FolderOpen, LogOut, ChevronRight,
   Sparkles, History, Megaphone,
   Target, FileText, Truck, Calendar, TrendingUp, Users, Tags, Settings,
@@ -22,10 +21,6 @@ const navItems = [
   {
     group: "과일 운영",
     items: [
-      { href: "/app", icon: LayoutDashboard, label: "대시보드", exact: true },
-      { href: "/app/fruits", icon: Package, label: "과일 포트폴리오" },
-      { href: "/app/calendar", icon: CalendarDays, label: "과일 캘린더" },
-      { href: "/app/campaigns", icon: Zap, label: "캠페인 관리" },
       { href: "/app/performance", icon: LineChart, label: "성과분석" },
       { href: "/app/reports", icon: BarChart3, label: "성과 리포트" },
     ],
