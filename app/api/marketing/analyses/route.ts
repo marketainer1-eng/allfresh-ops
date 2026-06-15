@@ -27,6 +27,12 @@ const createSchema = z.object({
   differentiation: z.string().optional(),
   recommendedChannels: z.array(channelRecSchema).optional(),
   thumbnailUrl: z.string().optional(),
+  competitorInfo: z.string().optional(),
+  competitorUrl: z.string().optional(),
+  competitors: z.array(z.record(z.any())).optional(),
+  marketResearch: z.record(z.any()).nullable().optional(),
+  weather: z.record(z.any()).nullable().optional(),
+  kamisPrices: z.record(z.any()).nullable().optional(),
   status: z.string().optional(),
 });
 
@@ -106,6 +112,12 @@ export async function POST(req: NextRequest) {
       differentiation: d.differentiation,
       recommendedChannels: d.recommendedChannels ?? undefined,
       thumbnailUrl: d.thumbnailUrl,
+      competitorInfo: d.competitorInfo,
+      competitorUrl: d.competitorUrl,
+      competitors: d.competitors ?? undefined,
+      marketResearch: d.marketResearch ?? undefined,
+      weather: d.weather ?? undefined,
+      kamisPrices: d.kamisPrices ?? undefined,
       status: d.status ?? "completed",
     },
   });

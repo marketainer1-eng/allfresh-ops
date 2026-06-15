@@ -443,6 +443,12 @@ model Analysis {
   differentiation     String?  @db.Text
   recommendedChannels Json?    @map("recommended_channels") // [{channel,priority,reasoning}]
   thumbnailUrl        String?  @map("thumbnail_url")
+  competitorInfo      String?  @map("competitor_info") @db.Text
+  competitorUrl       String?  @map("competitor_url")
+  competitors         Json?    // [{name,url,info}]
+  marketResearch      Json?    @map("market_research") // {summary,results:[]}
+  weather             Json?    // {baseDate,baseTime,temperature,rainfall,humidity}
+  kamisPrices         Json?    @map("kamis_prices") // {mapping,period,items:[]}
   status              String   @default("completed")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
