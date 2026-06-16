@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import PipelineSteps from "@/components/app/PipelineSteps";
 import {
   Target,
   Users,
@@ -414,6 +415,7 @@ function StrategyDashboard() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      <PipelineSteps current="strategy" analysisId={selectedAnalysisId} />
       {notification && (
         <div
           className={`fixed top-20 right-4 z-50 max-w-xs p-3.5 rounded-xl shadow-lg text-sm font-medium border transition-all duration-300 ${

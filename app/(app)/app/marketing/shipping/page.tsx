@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import PipelineSteps from "@/components/app/PipelineSteps";
 import {
   Truck,
   Calendar,
@@ -412,6 +413,7 @@ function ShippingPlannerInner() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-5xl mx-auto">
+      <PipelineSteps current="shipping" analysisId={selectedAnalysisId || null} />
       {notification && (
         <div
           className={`fixed top-20 right-4 z-50 max-w-xs p-3.5 rounded-xl shadow-lg text-sm font-medium border ${

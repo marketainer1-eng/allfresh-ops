@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import PipelineSteps from "@/components/app/PipelineSteps";
 import {
   Search,
   Package,
@@ -211,6 +212,7 @@ function HistoryInner() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      <PipelineSteps current="analysis" analysisId={selected?.id ?? focusId ?? null} />
       {/* Notification */}
       {notification && (
         <div

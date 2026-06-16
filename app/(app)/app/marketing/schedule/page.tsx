@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import PipelineSteps from "@/components/app/PipelineSteps";
 import {
   ChevronLeft,
   ChevronRight,
@@ -198,6 +199,7 @@ export default function SchedulePage() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      <PipelineSteps current="schedule" analysisId={null} />
       {/* Notification */}
       {notification && (
         <div
