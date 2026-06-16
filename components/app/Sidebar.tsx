@@ -7,6 +7,7 @@ import {
   BarChart3, LineChart, FolderOpen, LogOut, ChevronRight,
   Sparkles, History, Megaphone,
   Target, FileText, Truck, Calendar, TrendingUp, Users, Tags, Settings,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ const navItems = [
       { href: "/app/marketing/content", icon: FileText, label: "콘텐츠 기획" },
       { href: "/app/marketing/shipping", icon: Truck, label: "출하 마케팅" },
       { href: "/app/marketing/schedule", icon: Calendar, label: "마케팅 일정" },
+      { href: "/app/marketing/plan", icon: ClipboardList, label: "마케팅 플랜" },
       { href: "/app/marketing/insights", icon: Users, label: "고객 인사이트" },
       { href: "/app/marketing/settings", icon: Settings, label: "설정" },
     ],

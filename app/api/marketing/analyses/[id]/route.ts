@@ -45,6 +45,7 @@ export async function GET(
       contentPlans: { orderBy: { createdAt: "asc" } },
       executionTasks: { orderBy: { recommendedDate: "asc" } },
       forecasts: { orderBy: { createdAt: "desc" } },
+      campaigns: { orderBy: { startDate: "asc" } },
       _count: { select: { strategyItems: true, contentPlans: true } },
     },
   });

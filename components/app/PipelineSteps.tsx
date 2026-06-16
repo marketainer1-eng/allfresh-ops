@@ -20,8 +20,8 @@ export const PIPELINE_STEPS = [
 
 export type PipelineStepKey = (typeof PIPELINE_STEPS)[number]["key"];
 
-// 마케팅 플랜(Phase C) 페이지 준비 여부 — 준비되면 true 로 전환
-const PLAN_READY = false;
+// 마케팅 플랜 페이지 준비 여부
+const PLAN_READY = true;
 
 function stepHref(key: PipelineStepKey, href: string, analysisId?: string | null) {
   if (!analysisId) return href;
