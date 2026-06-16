@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Package, CalendarDays, Zap,
   BarChart3, LineChart, FolderOpen, LogOut, ChevronRight,
+  Sparkles, History, Megaphone,
+  Target, FileText, Truck, Calendar, TrendingUp, Users, Tags, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,12 +21,24 @@ const navItems = [
   {
     group: "과일 운영",
     items: [
-      { href: "/app", icon: LayoutDashboard, label: "대시보드", exact: true },
-      { href: "/app/fruits", icon: Package, label: "과일 포트폴리오" },
-      { href: "/app/calendar", icon: CalendarDays, label: "과일 캘린더" },
-      { href: "/app/campaigns", icon: Zap, label: "캠페인 관리" },
       { href: "/app/performance", icon: LineChart, label: "성과분석" },
       { href: "/app/reports", icon: BarChart3, label: "성과 리포트" },
+    ],
+  },
+  {
+    group: "마케팅 에이전트",
+    items: [
+      { href: "/app/marketing", icon: Megaphone, label: "마케팅 대시보드", exact: true },
+      { href: "/app/marketing/new", icon: Sparkles, label: "새 분석" },
+      { href: "/app/marketing/forecast", icon: TrendingUp, label: "수요 예측" },
+      { href: "/app/marketing/kamis", icon: Tags, label: "KAMIS 매핑" },
+      { href: "/app/marketing/history", icon: History, label: "분석 이력" },
+      { href: "/app/marketing/strategy", icon: Target, label: "전략 분석" },
+      { href: "/app/marketing/content", icon: FileText, label: "콘텐츠 기획" },
+      { href: "/app/marketing/shipping", icon: Truck, label: "출하 마케팅" },
+      { href: "/app/marketing/schedule", icon: Calendar, label: "마케팅 일정" },
+      { href: "/app/marketing/insights", icon: Users, label: "고객 인사이트" },
+      { href: "/app/marketing/settings", icon: Settings, label: "설정" },
     ],
   },
   {
