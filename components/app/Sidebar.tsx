@@ -21,7 +21,6 @@ const navItems = [
   {
     group: "과일 운영",
     items: [
-      { href: "/app/performance", icon: LineChart, label: "성과분석" },
       { href: "/app/reports", icon: BarChart3, label: "성과 리포트" },
     ],
   },
@@ -30,6 +29,7 @@ const navItems = [
     items: [
       { href: "/app/marketing", icon: Megaphone, label: "마케팅 대시보드", exact: true },
       { href: "/app/marketing/new", icon: Sparkles, label: "새 분석" },
+      { href: "/app/performance", icon: LineChart, label: "성과분석" },
       { href: "/app/marketing/forecast", icon: TrendingUp, label: "수요 예측" },
       { href: "/app/marketing/kamis", icon: Tags, label: "KAMIS 매핑" },
       { href: "/app/marketing/history", icon: History, label: "분석 이력" },
