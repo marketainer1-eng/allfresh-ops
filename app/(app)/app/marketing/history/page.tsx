@@ -18,6 +18,9 @@ import {
   Check,
   ShoppingBag,
   Target,
+  TrendingUp,
+  Cloud,
+  Sparkles,
 } from "lucide-react";
 
 interface ChannelRec {
@@ -41,6 +44,31 @@ interface Analysis {
   differentiation: string | null;
   recommendedChannels: ChannelRec[] | null;
   attributes: Record<string, string> | null;
+  weather?: {
+    baseDate?: string | null;
+    baseTime?: string | null;
+    temperature?: number | null;
+    rainfall?: number | null;
+    humidity?: number | null;
+  } | null;
+  kamisPrices?: {
+    mapping?: { itemName?: string; kindName?: string } | null;
+    period?: { startday?: string; endday?: string } | null;
+    items?: Array<{
+      itemname?: string;
+      kindname?: string;
+      price?: string;
+      dpr1?: string;
+      regday?: string;
+    }> | null;
+  } | null;
+  forecasts?: Array<{
+    id: string;
+    predictedDemand?: number | null;
+    confidenceR2?: number | null;
+    recommendation?: string | null;
+    featureImportance?: Record<string, number> | null;
+  }> | null;
   createdAt: string;
 }
 
@@ -600,6 +628,7 @@ function DetailModal({
               </div>
             </div>
           )}
+          <DataInsights analysis={analysis} />
         </div>
 
         <div className="border-t border-stone-200 p-4 flex flex-col-reverse sm:flex-row sm:justify-between sm:items-center gap-2 flex-shrink-0">
@@ -646,6 +675,126 @@ function BlockHeader({ label, onCopy }: { label: string; onCopy: () => void }) {
       >
         <Copy className="w-3 h-3" /> 복사
       </button>
+    </div>
+  );
+}
+
+// 분석에 묶인 수요예측·KAMIS 시세·날씨를 한 곳에 통합 표시
+function DataInsights({ analysis }: { analysis: Analysis }) {
+  const fc = analysis.forecasts?.[0] ?? null;
+  const weather = analysis.weather ?? null;
+  const kamis = analysis.kamisPrices ?? null;
+  const kItems = (kamis?.items || []).slice(0, 5);
+
+  const hasForecast = !!fc && fc.predictedDemand != null;
+  const hasWeather =
+    !!weather &&
+    (weather.temperature != null ||
+      weather.rainfall != null ||
+      weather.humidity != null);
+  const hasKamis = kItems.length > 0;
+  if (!hasForecast && !hasWeather && !hasKamis) return null;
+
+  const factors = fc?.featureImportance
+    ? Object.entries(fc.featureImportance)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+        .slice(0, 4)
+    : [];
+
+  return (
+    <div className="pt-4 border-t border-stone-200">
+      <h4 className="text-xs font-bold text-violet-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <TrendingUp className="w-3.5 h-3.5" />
+        데이터 인사이트
+      </h4>
+      <div className="space-y-4">
+        {hasForecast && (
+          <div className="border border-violet-200 rounded-xl bg-violet-50/40 p-4 space-y-2">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <div className="text-[11px] text-violet-700 font-semibold">예상 수요 지수</div>
+                <div className="text-2xl font-bold text-violet-800 leading-tight">
+                  {Math.round(fc!.predictedDemand as number).toLocaleString()}
+                </div>
+              </div>
+              {fc!.confidenceR2 != null && fc!.confidenceR2 > 0 && (
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-500">모델 신뢰도(R²)</div>
+                  <div className="text-sm font-bold text-violet-700">
+                    {(fc!.confidenceR2 as number).toFixed(2)}
+                  </div>
+                </div>
+              )}
+            </div>
+            {factors.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {factors.map(([name, val]) => (
+                  <span
+                    key={name}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-medium border bg-white text-violet-700 border-violet-100"
+                  >
+                    {name} {Math.round(val * 100)}%
+                  </span>
+                ))}
+              </div>
+            )}
+            {fc!.recommendation && (
+              <div className="text-[11px] text-violet-900 bg-white/70 rounded-lg p-2.5 leading-relaxed flex items-start gap-1.5">
+                <Sparkles className="w-3 h-3 mt-0.5 shrink-0 text-violet-600" />
+                <span>{fc!.recommendation}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {hasWeather && (
+          <div className="border border-cyan-200 rounded-xl bg-cyan-50/40 p-3 flex items-center gap-4 text-xs text-cyan-900">
+            <span className="flex items-center gap-1.5 font-semibold text-cyan-700">
+              <Cloud className="w-3.5 h-3.5" /> 분석 시점 날씨
+            </span>
+            {weather!.temperature != null && <span>기온 {weather!.temperature}°C</span>}
+            {weather!.rainfall != null && <span>강수 {weather!.rainfall}mm</span>}
+            {weather!.humidity != null && <span>습도 {weather!.humidity}%</span>}
+          </div>
+        )}
+
+        {hasKamis && (
+          <div className="border border-amber-200 rounded-xl bg-amber-50/40 overflow-hidden">
+            <div className="px-3 py-2 text-[11px] font-semibold text-amber-800 bg-amber-100/40 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 min-w-0">
+                <TrendingUp className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">
+                  KAMIS 시세 — {kamis?.mapping?.itemName || "품목"}
+                  {kamis?.mapping?.kindName ? ` · ${kamis.mapping.kindName}` : ""}
+                </span>
+              </span>
+              {kamis?.period?.startday && kamis?.period?.endday && (
+                <span className="text-[10px] text-amber-700 flex-shrink-0 ml-2">
+                  {kamis.period.startday} ~ {kamis.period.endday}
+                </span>
+              )}
+            </div>
+            <div className="px-3 py-2 space-y-1">
+              {kItems.map((it, i) => {
+                const raw = it.price || it.dpr1 || "";
+                const n = Number(String(raw).replace(/[^0-9.-]/g, ""));
+                return (
+                  <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-slate-600 truncate">
+                      {it.regday || ""} {it.itemname || ""}
+                      {it.kindname ? ` · ${it.kindname}` : ""}
+                    </span>
+                    <span className="font-bold text-amber-700 whitespace-nowrap">
+                      {n ? n.toLocaleString() : raw || "-"}
+                      <span className="text-[10px] text-slate-500 ml-0.5">원</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
