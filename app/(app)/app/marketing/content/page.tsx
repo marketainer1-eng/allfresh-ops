@@ -2,6 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import PipelineSteps from "@/components/app/PipelineSteps";
 import {
   Zap,
   Loader2,
@@ -454,6 +455,7 @@ function ContentPlanner() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+      <PipelineSteps current="content" analysisId={selectedAnalysisId} />
       {notification && (
         <div
           className={`fixed top-20 right-4 z-50 max-w-xs p-3.5 rounded-xl shadow-lg text-sm font-medium border transition-all duration-300 ${
