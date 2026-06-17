@@ -10,6 +10,7 @@ import type {
   PerfRequest,
   PerfResponse,
 } from "@/lib/performanceTypes";
+import { CAFE24_GUIDELINE } from "@/lib/marketing/cafe24Guideline";
 
 // 출력 계약(PerfResponse)을 JSON 스키마로 명시 → Claude structured outputs로 스키마 보장.
 const PERF_RESPONSE_SCHEMA = {
@@ -102,6 +103,8 @@ const METHODOLOGY = `너는 올프레쉬(프리미엄 과일선물세트) 멀티
 [필수 리스크 보고] 목적과 무관해도 중대 리스크(적자 채널·환불 급증·단일채널 과의존·이중집계 의심)는 risks에 반드시 넣는다. 강조도는 조절해도 은폐 금지.
 
 [채널 비대칭] feeRate/cogsRate/contributionProfit이 있으면 "외형 매출 순위"와 "기여이익 순위"를 분리해 제시한다. 외형 1등이 이익 1등이 아닐 수 있음을 명시.
+
+${CAFE24_GUIDELINE}
 
 반드시 아래 JSON 스키마로만 응답한다. 한국어. JSON 외 텍스트 금지.
 {
