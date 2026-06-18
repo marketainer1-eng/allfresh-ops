@@ -50,7 +50,9 @@ const CATEGORY_COLOR: Record<string, string> = {
 
 const CHANNEL_LABEL: Record<string, string> = {
   SNS: "SNS",
-  EDM: "이메일",
+  KAKAO: "카카오",
+  META: "메타",
+  ADS: "애즈",
   BANNER: "배너",
   BLOG: "블로그",
 };
