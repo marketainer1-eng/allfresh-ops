@@ -1167,7 +1167,7 @@ export default function MarketingNewPage() {
           <Section
             step="03"
             title="경쟁사 분석"
-            desc="입력 방식을 선택하고 경쟁사 정보를 입력하면 AI가 차별점·가격 포지셔닝을 더 정밀하게 분석합니다"
+            desc="입력 방식(텍스트·URL·파일)을 선택해 경쟁사 정보를 넣으세요. URL·파일과 함께 경쟁사를 직접 추가할 수도 있습니다."
           >
             <div className="space-y-4">
               <div>
@@ -1196,66 +1196,6 @@ export default function MarketingNewPage() {
                   })}
                 </div>
               </div>
-
-              {competitorInputMode === "text" && (
-                <div className="space-y-3">
-                  {competitors.map((c, i) => (
-                    <div
-                      key={i}
-                      className="bg-stone-50 border border-stone-200 rounded-xl p-4"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-                          <Users className="w-3.5 h-3.5 text-slate-500" />
-                          경쟁사 #{i + 1}
-                        </span>
-                        {competitors.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeCompetitor(i)}
-                            className="text-stone-400 hover:text-red-500 transition-colors"
-                            aria-label="경쟁사 삭제"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <AttrField
-                          label="경쟁사 상품명"
-                          placeholder="예) A브랜드 샤인머스켓 1kg"
-                          value={c.name}
-                          onChange={(v) => updateCompetitor(i, "name", v)}
-                        />
-                        <AttrField
-                          label="가격대"
-                          placeholder="예) 25,000원 ~ 35,000원"
-                          value={c.priceRange}
-                          onChange={(v) => updateCompetitor(i, "priceRange", v)}
-                        />
-                        <div className="sm:col-span-2">
-                          <AttrField
-                            label="강점·차별점"
-                            placeholder="예) 무료배송, 산지직송, 단독 패키지 디자인"
-                            value={c.strengths}
-                            onChange={(v) => updateCompetitor(i, "strengths", v)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {competitors.length < 5 && (
-                    <button
-                      type="button"
-                      onClick={addCompetitor}
-                      className="w-full inline-flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 hover:border-emerald-400 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>경쟁사 추가</span>
-                    </button>
-                  )}
-                </div>
-              )}
 
               {competitorInputMode === "url" && (
                 <div>
@@ -1333,6 +1273,75 @@ export default function MarketingNewPage() {
                   />
                 </div>
               )}
+
+              {/* 경쟁사 직접 입력 — 모든 입력 방식(텍스트·URL·파일)에서 추가 가능 */}
+              <div className="space-y-3">
+                {competitorInputMode !== "text" && (
+                  <div className="pt-3 border-t border-stone-100">
+                    <span className="text-xs font-semibold text-slate-700">
+                      경쟁사 직접 추가 <span className="text-slate-400 font-normal">(선택)</span>
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      URL·파일과 함께, 직접 입력한 경쟁사 정보도 AI 분석에 반영됩니다.
+                    </p>
+                  </div>
+                )}
+                {competitors.map((c, i) => (
+                  <div
+                    key={i}
+                    className="bg-stone-50 border border-stone-200 rounded-xl p-4"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                        <Users className="w-3.5 h-3.5 text-slate-500" />
+                        경쟁사 #{i + 1}
+                      </span>
+                      {competitors.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeCompetitor(i)}
+                          className="text-stone-400 hover:text-red-500 transition-colors"
+                          aria-label="경쟁사 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <AttrField
+                        label="경쟁사 상품명"
+                        placeholder="예) A브랜드 샤인머스켓 1kg"
+                        value={c.name}
+                        onChange={(v) => updateCompetitor(i, "name", v)}
+                      />
+                      <AttrField
+                        label="가격대"
+                        placeholder="예) 25,000원 ~ 35,000원"
+                        value={c.priceRange}
+                        onChange={(v) => updateCompetitor(i, "priceRange", v)}
+                      />
+                      <div className="sm:col-span-2">
+                        <AttrField
+                          label="강점·차별점"
+                          placeholder="예) 무료배송, 산지직송, 단독 패키지 디자인"
+                          value={c.strengths}
+                          onChange={(v) => updateCompetitor(i, "strengths", v)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {competitors.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={addCompetitor}
+                    className="w-full inline-flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 hover:border-emerald-400 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>경쟁사 추가</span>
+                  </button>
+                )}
+              </div>
             </div>
           </Section>
 
