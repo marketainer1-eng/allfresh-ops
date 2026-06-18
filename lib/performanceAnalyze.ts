@@ -11,6 +11,8 @@ import type {
   PerfResponse,
 } from "@/lib/performanceTypes";
 import { CAFE24_GUIDELINE } from "@/lib/marketing/cafe24Guideline";
+import { SMARTSTORE_GUIDELINE } from "@/lib/marketing/smartstoreGuideline";
+import { CROSS_SOURCE_GUIDELINE } from "@/lib/marketing/crossSourceGuideline";
 
 // 출력 계약(PerfResponse)을 JSON 스키마로 명시 → Claude structured outputs로 스키마 보장.
 const PERF_RESPONSE_SCHEMA = {
@@ -104,7 +106,13 @@ const METHODOLOGY = `너는 올프레쉬(프리미엄 과일선물세트) 멀티
 
 [채널 비대칭] feeRate/cogsRate/contributionProfit이 있으면 "외형 매출 순위"와 "기여이익 순위"를 분리해 제시한다. 외형 1등이 이익 1등이 아닐 수 있음을 명시.
 
+[데이터 출처별 적용] 입력 데이터의 출처에 맞는 지침을 적용한다 — 카페24 쇼핑몰 데이터=카페24 지침, 네이버 스마트스토어 데이터=스마트스토어 지침, 여러 판매처+광고를 함께 보면 크로스소스 통합 지침을 우선 적용한다.
+
 ${CAFE24_GUIDELINE}
+
+${SMARTSTORE_GUIDELINE}
+
+${CROSS_SOURCE_GUIDELINE}
 
 반드시 아래 JSON 스키마로만 응답한다. 한국어. JSON 외 텍스트 금지.
 {
