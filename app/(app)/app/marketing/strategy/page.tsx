@@ -156,6 +156,7 @@ function StrategyDashboard() {
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(
     incomingAnalysisId || null,
   );
+  const [additionalContext, setAdditionalContext] = useState("");
   const [items, setItems] = useState<StrategyItem[]>([]);
   const [loadingAnalyses, setLoadingAnalyses] = useState(true);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -247,6 +248,7 @@ function StrategyDashboard() {
           marketingCopy: analysis.marketingCopy,
           seasonalCampaign: analysis.seasonalCampaign,
           productInfo: analysis.productInfo,
+          additionalContext: additionalContext.trim(),
         }),
       });
       if (!res.ok) {
@@ -491,6 +493,19 @@ function StrategyDashboard() {
             ))}
           </select>
         )}
+
+        <div className="mt-3">
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            추가 데이터 <span className="text-slate-400 font-normal">(선택)</span>
+          </label>
+          <textarea
+            value={additionalContext}
+            onChange={(e) => setAdditionalContext(e.target.value)}
+            rows={3}
+            placeholder="전략 분석에 반영할 데이터를 자유롭게 입력하세요 (예: 자사 강점·약점, 경쟁 상황, 최근 시장 이슈, 내부 메모 등). 입력한 내용은 SWOT·PEST 생성에 함께 반영됩니다."
+            className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none text-sm transition-all resize-none"
+          />
+        </div>
 
         {items.length > 0 && (
           <div className="mt-4 pt-4 border-t border-stone-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">

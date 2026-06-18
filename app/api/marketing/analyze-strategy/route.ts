@@ -11,6 +11,7 @@ interface StrategyRequest {
     marketingCopy?: string;
     seasonalCampaign?: string;
     productInfo?: string;
+    additionalContext?: string;
 }
 interface StrategyResponse {
     swot: {
@@ -34,6 +35,7 @@ function buildPrompt(body: StrategyRequest): string {
 마케팅 카피: ${body.marketingCopy || "(미입력)"}
 시즌 캠페인: ${body.seasonalCampaign || "(미입력)"}
 상품 설명: ${body.productInfo || "(미입력)"}
+${body.additionalContext?.trim() ? `추가 입력 데이터(반드시 반영): ${body.additionalContext.trim()}` : ""}
 다음 JSON 형식으로 정확히 응답해 주세요. 각 항목은 한국어로 3개씩, 실행 가능한 구체적 문장으로 작성하세요.
 {
   "swot": {

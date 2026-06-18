@@ -18,6 +18,7 @@ interface ContentPlanRequest {
     seasonalCampaign?: string;
     hashtags?: string[];
     selectedStrategies?: StrategyInput[];
+    additionalContext?: string;
 }
 interface ContentPlanItem {
     channel: string;
@@ -64,6 +65,7 @@ function buildPrompt(body: ContentPlanRequest): string {
 기존 해시태그: ${(body.hashtags || []).join(", ") || "(없음)"}
 확정된 전략 항목 (실행 대상):
 ${strategiesText || "(미입력)"}
+${body.additionalContext?.trim() ? `추가 입력 데이터(반드시 반영): ${body.additionalContext.trim()}` : ""}
 다음 JSON 형식으로 정확히 응답하세요. 모든 텍스트는 한국어로 작성합니다.
 {
   "contentPlans": [
