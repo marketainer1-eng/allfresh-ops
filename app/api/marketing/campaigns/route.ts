@@ -19,7 +19,8 @@ const campaignSchema = z.object({
   endDate: isoDate,
   status: z.enum(["planned", "active", "completed"]).optional(),
   color: z.string().nullable().optional(),
-  channel: z.enum(["SNS", "EDM", "BANNER", "BLOG"]).nullable().optional(),
+  channel: z.string().nullable().optional(),
+  assignee: z.string().nullable().optional(),
   analysisId: z.string().nullable().optional(),
 });
 
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
     status: c.status ?? "planned",
     color: c.color ?? undefined,
     channel: c.channel ?? undefined,
+    assignee: c.assignee ?? undefined,
     analysisId: c.analysisId ?? undefined,
   });
 

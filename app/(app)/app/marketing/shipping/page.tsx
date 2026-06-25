@@ -190,6 +190,7 @@ function ShippingPlannerInner() {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string>("");
   const [shippingDate, setShippingDate] = useState("");
+  const [assignee, setAssignee] = useState("");
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [loadingAnalyses, setLoadingAnalyses] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -351,6 +352,7 @@ function ShippingPlannerInner() {
             status: "planned" as const,
             color: phaseConfig.color,
             channel: it.channel,
+            assignee: assignee.trim() || null,
             analysisId: selectedAnalysisId || null,
           };
         }),
@@ -593,13 +595,27 @@ function ShippingPlannerInner() {
               </div>
             </div>
             {!confirmed ? (
-              <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-stone-100 leading-relaxed flex items-center gap-1.5 flex-wrap">
-                <ChevronUp className="w-3 h-3 inline-block" />
-                <ChevronDown className="w-3 h-3 inline-block -ml-1" />
-                <span>
-                  ▲/▼ 버튼으로 순서를 바꾸거나 날짜를 클릭해 일정을 조정한 뒤 &apos;확정&apos; 버튼을 누르세요. 확정 시 마케팅 일정 페이지에 자동 등록됩니다.
-                </span>
-              </p>
+              <div className="mt-3 pt-3 border-t border-stone-100 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    담당자 <span className="text-slate-400 font-normal">(선택)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={assignee}
+                    onChange={(e) => setAssignee(e.target.value)}
+                    placeholder="담당자 이름 입력 — 확정 시 모든 캠페인에 적용됩니다"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none text-sm transition-all"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed flex items-center gap-1.5 flex-wrap">
+                  <ChevronUp className="w-3 h-3 inline-block" />
+                  <ChevronDown className="w-3 h-3 inline-block -ml-1" />
+                  <span>
+                    ▲/▼ 버튼으로 순서를 바꾸거나 날짜를 클릭해 일정을 조정한 뒤 &apos;확정&apos; 버튼을 누르세요. 확정 시 마케팅 일정 페이지에 자동 등록됩니다.
+                  </span>
+                </p>
+              </div>
             ) : (
               <div className="mt-3 pt-3 border-t border-emerald-100 flex items-start gap-2">
                 <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
