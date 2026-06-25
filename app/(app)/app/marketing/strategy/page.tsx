@@ -156,6 +156,7 @@ function StrategyDashboard() {
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(
     incomingAnalysisId || null,
   );
+  const [additionalContext, setAdditionalContext] = useState("");
   const [items, setItems] = useState<StrategyItem[]>([]);
   const [loadingAnalyses, setLoadingAnalyses] = useState(true);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -247,6 +248,7 @@ function StrategyDashboard() {
           marketingCopy: analysis.marketingCopy,
           seasonalCampaign: analysis.seasonalCampaign,
           productInfo: analysis.productInfo,
+          additionalContext: additionalContext.trim(),
         }),
       });
       if (!res.ok) {
@@ -330,73 +332,33 @@ function StrategyDashboard() {
     }
     setSaving(true);
     try {
-      const expectedSelected = selectedItems.length;
-
-      // 1차 저장: 토글 중 발생한 개별 API 업데이트의 누락을 방지하기 위해
-      // 모든 항목을 강제 재저장한다.
-      const saveAllItems = async (): Promise<number> => {
-        const results = await Promise.all(
-          items.map((item) =>
-            fetch(`/api/marketing/strategy-items/${item.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                isSelected: item.isSelected,
-                assignee: item.assignee || "",
-              }),
-            })
-              .then((r) => r.ok)
-              .catch((err) => {
-                console.error("StrategyItem save failed:", item.id, err);
-                return false;
-              }),
-          ),
-        );
-        return results.filter((r) => r === false).length;
-      };
-
-      // DB 검증: 콘텐츠 기획 페이지가 동일한 쿼리로 데이터를 불러오기 때문에
-      // 같은 쿼리로 다시 읽어 실제 반영 여부를 확인한다.
-      const verifySavedCount = async (): Promise<number> => {
-        try {
-          const res = await fetch(
-            `/api/marketing/strategy-items?analysisId=${selectedAnalysisId}`,
-          );
-          if (!res.ok) return -1;
-          const arr = (await res.json()) as StrategyItem[];
-          return (Array.isArray(arr) ? arr : []).filter((s) => s.isSelected).length;
-        } catch (err) {
-          console.error("verify failed:", err);
-          return -1;
-        }
-      };
-
-      const failed = await saveAllItems();
-      if (failed > 0 && failed === items.length) {
+      // 선택 상태를 모든 항목에 강제 재저장(토글 중 누락 방지). 쓰기 직후 재조회는
+      // 커넥션 풀러 레이스로 방금 쓴 값을 못 읽어 오탐을 낼 수 있어, 재검증으로
+      // 이동을 막지 않는다. 콘텐츠 기획 페이지가 진입 시 DB에서 다시 읽는다.
+      const results = await Promise.all(
+        items.map((item) =>
+          fetch(`/api/marketing/strategy-items/${item.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              isSelected: item.isSelected,
+              assignee: item.assignee || "",
+            }),
+          })
+            .then((r) => r.ok)
+            .catch((err) => {
+              console.error("StrategyItem save failed:", item.id, err);
+              return false;
+            }),
+        ),
+      );
+      const failed = results.filter((r) => r === false).length;
+      if (failed === items.length) {
         showNotice("error", "저장에 실패했습니다. 다시 시도해 주세요.");
         return;
       }
 
-      // 백엔드 반영이 살짝 지연되는 경우를 대비해 한 번 더 재저장·재검증한다.
-      let savedSelected = await verifySavedCount();
-      if (savedSelected !== -1 && savedSelected < expectedSelected) {
-        await new Promise((r) => setTimeout(r, 400));
-        await saveAllItems();
-        savedSelected = await verifySavedCount();
-      }
-
-      if (savedSelected === 0) {
-        showNotice(
-          "error",
-          "저장은 완료됐지만 콘텐츠 기획에 표시할 항목이 없습니다. 잠시 후 다시 시도해 주세요.",
-        );
-        return;
-      }
-
-      const finalCount = savedSelected > 0 ? savedSelected : expectedSelected;
-      showNotice("success", `${finalCount}건의 실행 항목이 저장되었습니다`);
-
-      // 검증이 끝났으므로 곧바로 이동한다.
+      showNotice("success", `${selectedItems.length}건의 실행 항목이 저장되었습니다`);
       router.push(`/app/marketing/content?analysisId=${selectedAnalysisId}`);
     } catch (e) {
       console.error(e);
@@ -491,6 +453,19 @@ function StrategyDashboard() {
             ))}
           </select>
         )}
+
+        <div className="mt-3">
+          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            추가 데이터 <span className="text-slate-400 font-normal">(선택)</span>
+          </label>
+          <textarea
+            value={additionalContext}
+            onChange={(e) => setAdditionalContext(e.target.value)}
+            rows={3}
+            placeholder="전략 분석에 반영할 데이터를 자유롭게 입력하세요 (예: 자사 강점·약점, 경쟁 상황, 최근 시장 이슈, 내부 메모 등). 입력한 내용은 SWOT·PEST 생성에 함께 반영됩니다."
+            className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none text-sm transition-all resize-none"
+          />
+        </div>
 
         {items.length > 0 && (
           <div className="mt-4 pt-4 border-t border-stone-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
