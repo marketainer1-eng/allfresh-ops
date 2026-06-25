@@ -195,6 +195,13 @@ export default function CustomerInsights() {
                 전체 분석 이력
               </Link>
               <Link
+                href="/app/marketing/relationship"
+                className="text-xs px-3 py-2 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 inline-flex items-center gap-1.5"
+              >
+                <Users className="w-3.5 h-3.5" />
+                고객 관계 예측
+              </Link>
+              <Link
                 href="/app/marketing/forecast"
                 className="text-xs px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5"
               >
