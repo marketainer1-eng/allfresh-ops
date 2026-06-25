@@ -444,17 +444,74 @@ export default function MarketingNewPage() {
   // -------------------------------------------------------------------------
   // 대표 이미지 업로드
   // -------------------------------------------------------------------------
+  // 업로드 전 브라우저에서 이미지를 리사이즈·압축한다.
+  // Vercel 서버리스 본문 한도(~4.5MB)를 넘는 원본 사진을 안전하게 줄인다.
+  const compressImage = async (file: File): Promise<Blob> => {
+    if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const i = new window.Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = dataUrl;
+      });
+      const maxDim = 1600;
+      if (Math.max(img.width, img.height) <= maxDim && file.size <= 1_500_000) {
+        return file;
+      }
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return file;
+      ctx.drawImage(img, 0, 0, w, h);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, "image/jpeg", 0.82),
+      );
+      return blob && blob.size < file.size ? blob : file;
+    } catch {
+      return file;
+    }
+  };
+
   const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     setUploadingThumb(true);
     try {
+      const blob = await compressImage(f);
+      const isJpeg = blob.type === "image/jpeg" && blob !== f;
+      const fileName = isJpeg ? f.name.replace(/\.[^.]+$/, "") + ".jpg" : f.name;
       const form = new FormData();
-      form.append("file", f);
+      form.append("file", blob, fileName);
       form.append("folder", "images");
       const res = await fetch("/api/marketing/upload", { method: "POST", body: form });
+      if (!res.ok) {
+        let msg = `이미지 업로드 실패 (HTTP ${res.status})`;
+        if (res.status === 413) {
+          msg = "이미지 용량이 너무 큽니다. 더 작은 이미지를 사용해 주세요.";
+        } else {
+          try {
+            const d = await res.json();
+            if (d?.error) msg = d.error;
+          } catch {
+            /* 비-JSON 응답 */
+          }
+        }
+        showNotice("error", msg);
+        return;
+      }
       const data = await res.json();
-      if (res.ok && data?.ok && data.url) {
+      if (data?.ok && data.url) {
         setThumbnailUrl(data.url);
         showNotice("success", "이미지 업로드 완료");
       } else {
