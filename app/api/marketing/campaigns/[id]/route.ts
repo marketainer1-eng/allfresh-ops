@@ -19,7 +19,8 @@ const updateSchema = z.object({
   endDate: isoDate.optional(),
   status: z.enum(["planned", "active", "completed"]).optional(),
   color: z.string().nullable().optional(),
-  channel: z.enum(["SNS", "EDM", "BANNER", "BLOG"]).nullable().optional(),
+  channel: z.string().nullable().optional(),
+  assignee: z.string().nullable().optional(),
   analysisId: z.string().nullable().optional(),
 });
 
@@ -74,6 +75,7 @@ export async function PATCH(
       ...(d.status !== undefined ? { status: d.status } : {}),
       ...(d.color !== undefined ? { color: d.color } : {}),
       ...(d.channel !== undefined ? { channel: d.channel } : {}),
+      ...(d.assignee !== undefined ? { assignee: d.assignee } : {}),
       ...(d.analysisId !== undefined ? { analysisId: d.analysisId } : {}),
     },
   });

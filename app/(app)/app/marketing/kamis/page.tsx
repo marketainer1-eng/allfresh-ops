@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Database, Check, AlertCircle, Save, Loader2, Package, Search,
-  RefreshCw, Link as LinkIcon, TrendingUp, ArrowLeft, Trash2, Power,
+  RefreshCw, Link as LinkIcon, TrendingUp, ArrowLeft, ArrowRight, Trash2, Power,
 } from "lucide-react";
 
 // ── KAMIS 코드 데이터 (KamisMapping.jsx에서 verbatim 이식) ──────────────
@@ -410,6 +410,27 @@ export default function KamisMappingPage() {
         <StatCard label="매핑 필요" value={Math.max(0, products.length - mappedCount)} icon={AlertCircle} color="text-amber-700" iconBg="bg-amber-100" iconColor="text-amber-600" />
       </div>
 
+      {/* 안내문구 — 매핑이 어디에 쓰이는지 + 다음 단계 */}
+      <div className="mb-5 rounded-2xl border border-cyan-200 bg-cyan-50/50 p-4">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-800 uppercase tracking-wider mb-2">
+          <LinkIcon className="w-3.5 h-3.5" />
+          매핑은 이렇게 쓰여요
+        </div>
+        <ol className="space-y-1 text-xs text-slate-700 leading-relaxed list-decimal list-inside">
+          <li>좌측에서 <b>자사 상품</b>을 고르고, 우측에서 KAMIS <b>부류·품목</b>을 연결해 <b>매핑 저장</b>합니다.</li>
+          <li>매핑하면 <b>새 분석</b>과 <b>수요 예측</b>에서 그 상품의 KAMIS 시세를 <b>자동으로 불러와</b> 가격 포지셔닝·발주 신호에 반영합니다.</li>
+          <li><b>선물세트</b>는 KAMIS에 단일 품목이 없어, <b>대표 원물</b>(예: 샤인머스캣 선물세트 → 포도)을 골라 매핑하세요.</li>
+        </ol>
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          <Link href="/app/marketing/new" className="inline-flex items-center gap-1 text-[11px] font-semibold text-cyan-700 hover:text-cyan-900">
+            새 분석으로 가기 <ArrowRight className="w-3 h-3" />
+          </Link>
+          <Link href="/app/marketing/forecast" className="inline-flex items-center gap-1 text-[11px] font-semibold text-cyan-700 hover:text-cyan-900">
+            수요 예측으로 가기 <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Left: 자사 상품 목록 */}
         <div className="lg:col-span-2">
@@ -530,6 +551,17 @@ export default function KamisMappingPage() {
                 <h3 className="text-lg font-bold text-slate-900">{selectedProduct.name}</h3>
               </div>
               <div className="p-5 space-y-4" role="form" aria-label="KAMIS 매핑 폼">
+                {(selectedProduct.category === "giftset" ||
+                  /선물\s*세트|세트/.test(selectedProduct.name)) && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800 leading-relaxed flex items-start gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      <b>선물세트</b>는 KAMIS에 단일 품목이 없어 직접 비교가 안 됩니다. 구성의{" "}
+                      <b>대표 원물</b>(예: 샤인머스캣 선물세트 → 포도/샤인머스캣)을 부류·품목으로
+                      골라 매핑하세요. 시세는 그 원물 기준으로 조회됩니다.
+                    </span>
+                  </div>
+                )}
                 <FormField label="부류 (Category)" required>
                   <select
                     value={form.categoryCode}

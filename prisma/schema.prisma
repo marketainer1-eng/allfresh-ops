@@ -541,7 +541,8 @@ model MarketingCampaign {
   endDate     DateTime @map("end_date")
   status      String   @default("planned") // planned|active|completed
   color       String?
-  channel     String?  // SNS|EDM|BANNER|BLOG
+  channel     String?  // SNS|KAKAO|META|ADS|BANNER|BLOG
+  assignee    String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

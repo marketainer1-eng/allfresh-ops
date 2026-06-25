@@ -25,6 +25,7 @@ interface Campaign {
   status: "planned" | "active" | "completed";
   color: string | null;
   channel: string | null;
+  assignee: string | null;
   analysisId: string | null;
 }
 
@@ -460,6 +461,7 @@ interface FormState {
   status: "planned" | "active" | "completed";
   color: string;
   channel: string;
+  assignee: string;
   analysisId: string | null;
 }
 
@@ -487,6 +489,7 @@ function CampaignForm({
     status: "planned" as const,
     color: "#15803D",
     channel: "SNS",
+    assignee: null,
     analysisId: null,
   };
 
@@ -499,6 +502,7 @@ function CampaignForm({
     status: initial.status || "planned",
     color: initial.color || CATEGORY_COLOR[initial.category || "single"],
     channel: initial.channel || "SNS",
+    assignee: initial.assignee || "",
     analysisId: initial.analysisId || null,
   });
   const [submitting, setSubmitting] = useState(false);
@@ -526,6 +530,7 @@ function CampaignForm({
         status: form.status,
         color: form.color || CATEGORY_COLOR[form.category],
         channel: form.channel,
+        assignee: form.assignee.trim() || null,
         analysisId: form.analysisId || null,
       };
       await onSave(payload);
@@ -644,6 +649,15 @@ function CampaignForm({
               </select>
             </Field>
           </div>
+          <Field label="담당자 (선택)">
+            <input
+              type="text"
+              value={form.assignee}
+              onChange={(e) => update("assignee", e.target.value)}
+              placeholder="담당자 이름"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-stone-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none text-sm"
+            />
+          </Field>
           <Field label="연결된 분석 (선택)">
             <select
               value={form.analysisId || ""}
