@@ -575,6 +575,10 @@ function ContentPlanner() {
           <p className="text-sm text-slate-600 mt-1">
             확정된 전략을 채널별 콘텐츠로 자동 변환하고, AI 우선순위로 캘린더 일정을 추천합니다.
           </p>
+          <p className="text-xs text-emerald-700 mt-1.5 inline-flex items-center gap-1">
+            <Check className="w-3.5 h-3.5" />
+            수정·추가·삭제는 <b className="mx-0.5">자동 저장</b>됩니다. (별도 저장 버튼 없음)
+          </p>
         </div>
         <button
           type="button"
