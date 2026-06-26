@@ -19,6 +19,10 @@ import {
   ChevronUp,
   Users,
   Clock,
+  Pencil,
+  Trash2,
+  Plus,
+  X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -443,6 +447,92 @@ function ContentPlanner() {
     }
   };
 
+  const deleteTask = async (id: string) => {
+    const prev = executionTasks;
+    setExecutionTasks((p) => p.filter((t) => t.id !== id));
+    try {
+      const res = await fetch(`/api/marketing/execution-tasks/${id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error();
+    } catch {
+      showNotice("error", "삭제에 실패했습니다");
+      setExecutionTasks(prev);
+    }
+  };
+
+  const addTask = async () => {
+    if (!selectedAnalysisId) return;
+    try {
+      const res = await fetch("/api/marketing/execution-tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          analysisId: selectedAnalysisId,
+          title: "새 실행 작업",
+          description: "",
+          channel: "detail_copy",
+          priority: "medium",
+          recommendedDate: new Date().toISOString(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data?.error) throw new Error();
+      setExecutionTasks((p) => [...p, data as ExecutionTask]);
+      showNotice("success", "실행 작업이 추가되었습니다");
+    } catch {
+      showNotice("error", "추가에 실패했습니다");
+    }
+  };
+
+  const updatePlan = async (id: string, patch: Partial<ContentPlan>) => {
+    setContentPlans((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    try {
+      const res = await fetch(`/api/marketing/content-plans/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      showNotice("error", "저장에 실패했습니다");
+      if (selectedAnalysisId) loadStrategyAndPlans(selectedAnalysisId);
+    }
+  };
+
+  const deletePlan = async (id: string) => {
+    const prev = contentPlans;
+    setContentPlans((p) => p.filter((c) => c.id !== id));
+    try {
+      const res = await fetch(`/api/marketing/content-plans/${id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) throw new Error();
+    } catch {
+      showNotice("error", "삭제에 실패했습니다");
+      setContentPlans(prev);
+    }
+  };
+
+  const addPlan = async () => {
+    if (!selectedAnalysisId) return;
+    const used = new Set(contentPlans.map((p) => p.channel));
+    const ch = CHANNEL_ORDER.find((c) => !used.has(c)) || "detail_copy";
+    try {
+      const res = await fetch("/api/marketing/content-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          analysisId: selectedAnalysisId,
+          plan: { channel: ch, title: "새 콘텐츠 기획안", description: "", keyPoints: [], hashtags: [] },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data?.error) throw new Error();
+      setContentPlans((p) => [...p, data as ContentPlan]);
+      setExpandedPlanId((data as ContentPlan).id);
+      showNotice("success", "콘텐츠 기획안이 추가되었습니다");
+    } catch {
+      showNotice("error", "추가에 실패했습니다");
+    }
+  };
+
   const sortedTasks = [...executionTasks].sort((a, b) => {
     const da = new Date(a.recommendedDate || 0).getTime();
     const db = new Date(b.recommendedDate || 0).getTime();
@@ -637,10 +727,12 @@ function ContentPlanner() {
           subtitle="유튜브 쇼츠 · 인스타 릴스/피드 · 네이버 블로그 · 상세페이지 카피 · 프로모션 이벤트"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-            {CHANNEL_ORDER.map((ch) => {
-              const plan = contentPlans.find((p) => p.channel === ch);
-              if (!plan) return null;
-              return (
+            {[...contentPlans]
+              .sort(
+                (a, b) =>
+                  CHANNEL_ORDER.indexOf(a.channel) - CHANNEL_ORDER.indexOf(b.channel),
+              )
+              .map((plan) => (
                 <ContentPlanCard
                   key={plan.id}
                   plan={plan}
@@ -648,10 +740,19 @@ function ContentPlanner() {
                   onToggle={() =>
                     setExpandedPlanId(expandedPlanId === plan.id ? null : plan.id)
                   }
+                  onUpdate={updatePlan}
+                  onDelete={() => deletePlan(plan.id)}
                 />
-              );
-            })}
+              ))}
           </div>
+          <button
+            type="button"
+            onClick={addPlan}
+            className="mt-3 w-full inline-flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 hover:border-emerald-400 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>콘텐츠 기획안 추가</span>
+          </button>
         </Section>
       )}
 
@@ -661,7 +762,12 @@ function ContentPlanner() {
           title="실행 플랜 · AI 추천 일정"
           subtitle="우선순위와 채널 의존성을 고려해 캘린더 일정을 1차로 추천했습니다. 담당자는 자유롭게 변경할 수 있어요."
         >
-          <ExecutionTimeline tasks={sortedTasks} onUpdateTask={updateTask} />
+          <ExecutionTimeline
+            tasks={sortedTasks}
+            onUpdateTask={updateTask}
+            onDeleteTask={deleteTask}
+            onAddTask={addTask}
+          />
         </Section>
       )}
     </div>
@@ -705,15 +811,39 @@ function ContentPlanCard({
   plan,
   expanded,
   onToggle,
+  onUpdate,
+  onDelete,
 }: {
   plan: ContentPlan;
   expanded: boolean;
   onToggle: () => void;
+  onUpdate: (id: string, patch: Partial<ContentPlan>) => void;
+  onDelete: () => void;
 }) {
   const config = channelConfig(plan.channel);
   const Icon = config.icon;
   const keyPoints = Array.isArray(plan.keyPoints) ? plan.keyPoints : [];
   const hashtags = Array.isArray(plan.hashtags) ? plan.hashtags : [];
+  const [editing, setEditing] = useState(false);
+  const [eTitle, setETitle] = useState(plan.title);
+  const [eDesc, setEDesc] = useState(plan.description || "");
+  const [eChannel, setEChannel] = useState(plan.channel);
+
+  const startEdit = () => {
+    setETitle(plan.title);
+    setEDesc(plan.description || "");
+    setEChannel(plan.channel);
+    setEditing(true);
+  };
+  const saveEdit = () => {
+    onUpdate(plan.id, {
+      title: eTitle.trim() || "제목 없음",
+      description: eDesc.trim(),
+      channel: eChannel,
+    });
+    setEditing(false);
+  };
+
   return (
     <div className={`rounded-2xl border ${config.border} ${config.bg} overflow-hidden`}>
       <button
@@ -752,43 +882,109 @@ function ContentPlanCard({
       {expanded && (
         <div className="overflow-hidden">
           <div className="px-4 md:px-5 pb-4 md:pb-5 space-y-3">
-            {plan.description && (
-              <p className="text-sm text-slate-700 leading-relaxed bg-white/70 rounded-lg p-3">
-                {plan.description}
-              </p>
-            )}
-            {keyPoints.length > 0 && (
-              <div>
-                <div className="text-xs font-semibold text-slate-700 mb-1.5">
-                  핵심 포인트
-                </div>
-                <ul className="space-y-1.5">
-                  {keyPoints.map((kp, i) => (
-                    <li
-                      key={i}
-                      className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed"
-                    >
-                      <span
-                        className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                        style={{ backgroundColor: config.color }}
-                      />
-                      <span>{kp}</span>
-                    </li>
+            <div className="flex items-center justify-end gap-1">
+              {!editing && (
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 px-2 py-1 rounded-md hover:bg-white/60"
+                >
+                  <Pencil className="w-3 h-3" /> 수정
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-red-600 px-2 py-1 rounded-md hover:bg-white/60"
+              >
+                <Trash2 className="w-3 h-3" /> 삭제
+              </button>
+            </div>
+
+            {editing ? (
+              <div className="space-y-2">
+                <select
+                  value={eChannel}
+                  onChange={(e) => setEChannel(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-md border border-stone-300 bg-white outline-none focus:border-emerald-500"
+                >
+                  {CHANNEL_ORDER.map((c) => (
+                    <option key={c} value={c}>
+                      {channelConfig(c).label}
+                    </option>
                   ))}
-                </ul>
-              </div>
-            )}
-            {hashtags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {hashtags.map((h, i) => (
-                  <span
-                    key={i}
-                    className="px-2 py-0.5 bg-white/80 border border-stone-200 rounded text-[11px] font-medium text-slate-600"
+                </select>
+                <input
+                  value={eTitle}
+                  onChange={(e) => setETitle(e.target.value)}
+                  placeholder="제목"
+                  className="w-full px-2.5 py-1.5 text-sm rounded-md border border-stone-300 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100"
+                />
+                <textarea
+                  value={eDesc}
+                  onChange={(e) => setEDesc(e.target.value)}
+                  rows={4}
+                  placeholder="설명"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-md border border-stone-300 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 resize-none"
+                />
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={saveEdit}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
                   >
-                    {h}
-                  </span>
-                ))}
+                    <Check className="w-3 h-3" /> 저장
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-stone-300 text-slate-600 hover:bg-white/60"
+                  >
+                    <X className="w-3 h-3" /> 취소
+                  </button>
+                </div>
               </div>
+            ) : (
+              <>
+                {plan.description && (
+                  <p className="text-sm text-slate-700 leading-relaxed bg-white/70 rounded-lg p-3">
+                    {plan.description}
+                  </p>
+                )}
+                {keyPoints.length > 0 && (
+                  <div>
+                    <div className="text-xs font-semibold text-slate-700 mb-1.5">
+                      핵심 포인트
+                    </div>
+                    <ul className="space-y-1.5">
+                      {keyPoints.map((kp, i) => (
+                        <li
+                          key={i}
+                          className="flex items-start gap-2 text-xs text-slate-700 leading-relaxed"
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                            style={{ backgroundColor: config.color }}
+                          />
+                          <span>{kp}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {hashtags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {hashtags.map((h, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-0.5 bg-white/80 border border-stone-200 rounded text-[11px] font-medium text-slate-600"
+                      >
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -800,9 +996,13 @@ function ContentPlanCard({
 function ExecutionTimeline({
   tasks,
   onUpdateTask,
+  onDeleteTask,
+  onAddTask,
 }: {
   tasks: ExecutionTask[];
   onUpdateTask: (id: string, patch: Partial<ExecutionTask>) => void;
+  onDeleteTask: (id: string) => void;
+  onAddTask: () => void;
 }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -850,12 +1050,27 @@ function ExecutionTimeline({
             </div>
             <div className="divide-y divide-stone-100">
               {group.items.map((t) => (
-                <TaskRow key={t.id} task={t} onUpdate={onUpdateTask} />
+                <TaskRow
+                  key={t.id}
+                  task={t}
+                  onUpdate={onUpdateTask}
+                  onDelete={() => onDeleteTask(t.id)}
+                />
               ))}
             </div>
           </div>
         );
       })}
+      <div className="border-t border-stone-100 p-3">
+        <button
+          type="button"
+          onClick={onAddTask}
+          className="w-full inline-flex items-center justify-center gap-2 border-2 border-dashed border-stone-300 hover:border-emerald-400 hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span>실행 작업 추가</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -863,9 +1078,11 @@ function ExecutionTimeline({
 function TaskRow({
   task,
   onUpdate,
+  onDelete,
 }: {
   task: ExecutionTask;
   onUpdate: (id: string, patch: Partial<ExecutionTask>) => void;
+  onDelete: () => void;
 }) {
   const channel = channelConfig(task.channel);
   const Icon = channel.icon;
@@ -876,6 +1093,30 @@ function TaskRow({
   const startInCustom = !!currentAssignee && !isPredefined;
   const [mode, setMode] = useState<"select" | "custom">(startInCustom ? "custom" : "select");
   const [draft, setDraft] = useState(currentAssignee);
+
+  const [editing, setEditing] = useState(false);
+  const [eTitle, setETitle] = useState(task.title);
+  const [eDesc, setEDesc] = useState(task.description || "");
+  const [ePriority, setEPriority] = useState(task.priority || "medium");
+  const [eDate, setEDate] = useState(toDateInputValue(task.recommendedDate));
+
+  const startEdit = () => {
+    setETitle(task.title);
+    setEDesc(task.description || "");
+    setEPriority(task.priority || "medium");
+    setEDate(toDateInputValue(task.recommendedDate));
+    setEditing(true);
+  };
+  const saveEdit = () => {
+    const patch: Partial<ExecutionTask> = {
+      title: eTitle.trim() || "제목 없음",
+      description: eDesc.trim(),
+      priority: ePriority,
+    };
+    if (eDate) patch.recommendedDate = new Date(eDate).toISOString();
+    onUpdate(task.id, patch);
+    setEditing(false);
+  };
 
   useEffect(() => {
     const a = task.assignee || "";
@@ -908,15 +1149,17 @@ function TaskRow({
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-            <span
-              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${priority.bg} ${priority.text} border ${priority.border}`}
-            >
+            {!editing && (
               <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: priority.dot }}
-              />
-              {priority.label}
-            </span>
+                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${priority.bg} ${priority.text} border ${priority.border}`}
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: priority.dot }}
+                />
+                {priority.label}
+              </span>
+            )}
             <span className="text-[10px] text-slate-500 font-medium">
               {channel.label}
             </span>
@@ -925,65 +1168,144 @@ function TaskRow({
               <Calendar className="w-3 h-3" />
               {dateLabel}
             </span>
-          </div>
-          <div className="text-sm font-semibold text-slate-900 leading-snug">
-            {task.title}
-          </div>
-          {task.description && (
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              {task.description}
-            </p>
-          )}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Users className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-            {mode === "custom" ? (
-              <div className="flex-1 max-w-xs">
-                <input
-                  type="text"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onBlur={handleCustomBlur}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                      e.currentTarget.blur();
-                    }
-                  }}
-                  placeholder="담당자 직접 입력"
-                  className="w-full px-2.5 py-1 text-xs rounded-md border border-stone-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none"
-                />
-              </div>
-            ) : (
-              <select
-                value={currentAssignee}
-                onChange={(e) => handleSelectChange(e.target.value)}
-                className="max-w-xs px-2.5 py-1 text-xs rounded-md border border-stone-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none bg-white"
+            <span className="ml-auto flex items-center gap-0.5">
+              {!editing && (
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="text-slate-300 hover:text-slate-600 p-1"
+                  aria-label="작업 수정"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onDelete}
+                className="text-slate-300 hover:text-red-500 p-1"
+                aria-label="작업 삭제"
               >
-                <option value="">담당자 미배정</option>
-                {TEAM_MEMBERS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-                <option value="__custom__">+ 직접 입력</option>
-              </select>
-            )}
-            {/* 상태 편집 — 백엔드 execution-tasks PATCH(status) 지원 */}
-            <select
-              value={task.status || "pending"}
-              onChange={(e) => onUpdate(task.id, { status: e.target.value })}
-              className="px-2.5 py-1 text-xs rounded-md border border-stone-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none bg-white"
-            >
-              {Object.entries(STATUS_CONFIG).map(([value, cfg]) => (
-                <option key={value} value={value}>
-                  {cfg.label}
-                </option>
-              ))}
-            </select>
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </span>
           </div>
+
+          {editing ? (
+            <div className="space-y-2">
+              <input
+                value={eTitle}
+                onChange={(e) => setETitle(e.target.value)}
+                placeholder="작업 제목"
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border border-stone-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none"
+              />
+              <textarea
+                value={eDesc}
+                onChange={(e) => setEDesc(e.target.value)}
+                rows={2}
+                placeholder="설명"
+                className="w-full px-2.5 py-1.5 text-xs rounded-md border border-stone-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none resize-none"
+              />
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="date"
+                  value={eDate}
+                  onChange={(e) => setEDate(e.target.value)}
+                  className="px-2.5 py-1 text-xs rounded-md border border-stone-300 outline-none focus:border-emerald-500"
+                />
+                <select
+                  value={ePriority}
+                  onChange={(e) => setEPriority(e.target.value)}
+                  className="px-2.5 py-1 text-xs rounded-md border border-stone-300 bg-white outline-none focus:border-emerald-500"
+                >
+                  {Object.entries(PRIORITY_CONFIG).map(([v, cfg]) => (
+                    <option key={v} value={v}>
+                      {cfg.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={saveEdit}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  <Check className="w-3 h-3" /> 저장
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-stone-300 text-slate-600 hover:bg-stone-50"
+                >
+                  <X className="w-3 h-3" /> 취소
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="text-sm font-semibold text-slate-900 leading-snug">
+                {task.title}
+              </div>
+              {task.description && (
+                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                  {task.description}
+                </p>
+              )}
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Users className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                {mode === "custom" ? (
+                  <div className="flex-1 max-w-xs">
+                    <input
+                      type="text"
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onBlur={handleCustomBlur}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      placeholder="담당자 직접 입력"
+                      className="w-full px-2.5 py-1 text-xs rounded-md border border-stone-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none"
+                    />
+                  </div>
+                ) : (
+                  <select
+                    value={currentAssignee}
+                    onChange={(e) => handleSelectChange(e.target.value)}
+                    className="max-w-xs px-2.5 py-1 text-xs rounded-md border border-stone-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none bg-white"
+                  >
+                    <option value="">담당자 미배정</option>
+                    {TEAM_MEMBERS.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                    <option value="__custom__">+ 직접 입력</option>
+                  </select>
+                )}
+                <select
+                  value={task.status || "pending"}
+                  onChange={(e) => onUpdate(task.id, { status: e.target.value })}
+                  className="px-2.5 py-1 text-xs rounded-md border border-stone-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-100 outline-none bg-white"
+                >
+                  {Object.entries(STATUS_CONFIG).map(([value, cfg]) => (
+                    <option key={value} value={value}>
+                      {cfg.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function toDateInputValue(s: string): string {
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function formatTaskDate(s: string): string {

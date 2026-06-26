@@ -71,6 +71,39 @@ export async function POST(req: NextRequest) {
   } catch {
     return apiError("잘못된 요청 본문입니다.");
   }
+
+  // 단건 추가: { analysisId, plan: {...} } — 기존 항목을 지우지 않고 1건만 생성
+  const singleSchema = z.object({
+    analysisId: z.string().min(1),
+    plan: contentPlanSchema,
+  });
+  const single = singleSchema.safeParse(body);
+  if (single.success) {
+    const { analysisId, plan } = single.data;
+    const ownerAnalysis = await prisma.analysis.findFirst({
+      where: { id: analysisId, workspaceId: ctx.workspaceId },
+      select: { id: true },
+    });
+    if (!ownerAnalysis) return apiError("분석을 찾을 수 없습니다.", 404);
+    const ch = (CHANNELS as readonly string[]).includes(plan.channel)
+      ? plan.channel
+      : "detail_copy";
+    const created = await prisma.contentPlan.create({
+      data: {
+        workspaceId: ctx.workspaceId,
+        analysisId,
+        channel: ch,
+        title: plan.title,
+        description: plan.description,
+        keyPoints: plan.keyPoints,
+        hashtags: plan.hashtags,
+        status: "draft",
+      },
+      include: { executionTasks: true },
+    });
+    return apiResponse(created, 201);
+  }
+
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.message);
 

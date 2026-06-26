@@ -8,6 +8,10 @@ const updateSchema = z.object({
   assignee: z.string().optional(),
   status: z.enum(["pending", "in_progress", "done"]).optional(),
   recommendedDate: z.string().optional(),
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  channel: z.string().min(1).optional(),
+  priority: z.enum(["high", "medium", "low"]).optional(),
 });
 
 // PATCH /api/marketing/execution-tasks/:id
@@ -33,14 +37,23 @@ export async function PATCH(
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return apiError(parsed.error.message);
 
-  const { assignee, status, recommendedDate } = parsed.data;
+  const { assignee, status, recommendedDate, title, description, channel, priority } =
+    parsed.data;
   const data: {
     assignee?: string;
     status?: string;
     recommendedDate?: Date;
+    title?: string;
+    description?: string;
+    channel?: string;
+    priority?: string;
   } = {};
   if (assignee !== undefined) data.assignee = assignee;
   if (status !== undefined) data.status = status;
+  if (title !== undefined) data.title = title;
+  if (description !== undefined) data.description = description;
+  if (channel !== undefined) data.channel = channel;
+  if (priority !== undefined) data.priority = priority;
   if (recommendedDate !== undefined) {
     const d = new Date(recommendedDate);
     if (isNaN(d.getTime())) return apiError("유효하지 않은 날짜입니다.");
