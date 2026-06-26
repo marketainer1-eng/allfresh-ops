@@ -38,6 +38,7 @@ const KAMIS_ITEMS: Record<string, { code: string; name: string }[]> = {
     { code: "414", name: "포도" },
     { code: "415", name: "감귤" },
     { code: "416", name: "단감" },
+    { code: "417", name: "자두" },
     { code: "418", name: "바나나" },
     { code: "419", name: "참다래(키위)" },
     { code: "420", name: "파인애플" },
