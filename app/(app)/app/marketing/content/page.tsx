@@ -250,6 +250,7 @@ function ContentPlanner() {
   const [generating, setGenerating] = useState(false);
   const [notification, setNotification] = useState<Notice>(null);
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
 
   const showNotice = useCallback((type: "success" | "error", msg: string) => {
     setNotification({ type, msg });
@@ -533,6 +534,54 @@ function ContentPlanner() {
     }
   };
 
+  // 명시적 저장 — 현재 화면의 모든 콘텐츠·실행 작업 상태를 DB에 재반영(비파괴).
+  const handleSaveAll = async () => {
+    if (contentPlans.length === 0 && executionTasks.length === 0) return;
+    setSavingAll(true);
+    try {
+      const planReqs = contentPlans.map((p) =>
+        fetch(`/api/marketing/content-plans/${p.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel: p.channel,
+            title: p.title,
+            description: p.description,
+            keyPoints: Array.isArray(p.keyPoints) ? p.keyPoints : [],
+            hashtags: Array.isArray(p.hashtags) ? p.hashtags : [],
+          }),
+        })
+          .then((r) => r.ok)
+          .catch(() => false),
+      );
+      const taskReqs = executionTasks.map((t) =>
+        fetch(`/api/marketing/execution-tasks/${t.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: t.title,
+            description: t.description,
+            channel: t.channel,
+            priority: t.priority,
+            recommendedDate: t.recommendedDate,
+            assignee: t.assignee,
+            status: t.status,
+          }),
+        })
+          .then((r) => r.ok)
+          .catch(() => false),
+      );
+      const results = await Promise.all([...planReqs, ...taskReqs]);
+      const failed = results.filter((ok) => !ok).length;
+      if (failed > 0) showNotice("error", `일부 항목 저장 실패 (${failed}건)`);
+      else showNotice("success", "모든 변경사항이 저장되었습니다");
+    } catch {
+      showNotice("error", "저장 중 오류가 발생했습니다");
+    } finally {
+      setSavingAll(false);
+    }
+  };
+
   const sortedTasks = [...executionTasks].sort((a, b) => {
     const da = new Date(a.recommendedDate || 0).getTime();
     const db = new Date(b.recommendedDate || 0).getTime();
@@ -577,27 +626,49 @@ function ContentPlanner() {
           </p>
           <p className="text-xs text-emerald-700 mt-1.5 inline-flex items-center gap-1">
             <Check className="w-3.5 h-3.5" />
-            수정·추가·삭제는 <b className="mx-0.5">자동 저장</b>됩니다. (별도 저장 버튼 없음)
+            수정·추가·삭제는 <b className="mx-0.5">자동 저장</b>되며, 우측 <b className="mx-0.5">저장</b> 버튼으로 전체를 한 번에 다시 저장할 수도 있습니다.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={!selectedAnalysisId || generating || selectedStrategies.length === 0}
-          className="inline-flex items-center justify-center gap-2 bg-[#15803D] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#166534] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-        >
-          {generating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>생성 중...</span>
-            </>
-          ) : (
-            <>
-              <Zap className="w-4 h-4" />
-              <span>{contentPlans.length > 0 ? "재생성" : "AI 콘텐츠·실행 플랜 생성"}</span>
-            </>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {contentPlans.length > 0 && (
+            <button
+              type="button"
+              onClick={handleSaveAll}
+              disabled={savingAll}
+              className="inline-flex items-center justify-center gap-2 bg-white border border-emerald-300 text-emerald-700 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              {savingAll ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>저장 중...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>저장</span>
+                </>
+              )}
+            </button>
           )}
-        </button>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={!selectedAnalysisId || generating || selectedStrategies.length === 0}
+            className="inline-flex items-center justify-center gap-2 bg-[#15803D] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#166534] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>생성 중...</span>
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4" />
+                <span>{contentPlans.length > 0 ? "재생성" : "AI 콘텐츠·실행 플랜 생성"}</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Analysis Selector + Strategy Summary */}
