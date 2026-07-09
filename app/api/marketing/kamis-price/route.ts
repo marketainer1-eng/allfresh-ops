@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/session";
 
 export const runtime = "nodejs";
+// 한국 KAMIS 서버 호출 지연을 줄이기 위해 서울(icn1) 리전 선호. 느린 응답 대비 시간 확보.
+export const preferredRegion = "icn1";
+export const maxDuration = 30;
 
 // 인증값은 환경변수에서만 읽는다(시크릿 하드코딩 금지). KAMIS_API_KEY=인증키, KAMIS_CERT_ID=가입 이메일.
 const KAMIS_API_KEY = process.env.KAMIS_API_KEY || "";
 const KAMIS_CERT_ID = process.env.KAMIS_CERT_ID || "";
+
+// 결과 캐시(웜 인스턴스 한정, best-effort) — KAMIS는 일별 데이터라 30분 재사용.
+const CACHE_TTL_MS = 30 * 60 * 1000;
+const priceCache = new Map<string, { t: number; data: unknown }>();
 interface KamisRequest {
     startday?: string; // YYYY-MM-DD
     endday?: string; // YYYY-MM-DD
@@ -38,8 +45,11 @@ async function callKamis(paramObj: Record<string, string>) {
     const params = new URLSearchParams(paramObj);
     const url =
         `https://www.kamis.or.kr/service/price/xml.do?${params.toString()}`;
+    // 개별 호출당 타임아웃(8초) — KAMIS가 느릴 때 전체 요청이 멈추지 않도록.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
         const httpStatus = res.status;
         const text = await res.text();
         let raw: any;
@@ -59,6 +69,8 @@ async function callKamis(paramObj: Record<string, string>) {
             httpStatus: 0,
             url,
         };
+    } finally {
+        clearTimeout(timer);
     }
 }
 
@@ -86,6 +98,19 @@ export async function POST(req: NextRequest) {
                 },
                 { status: 400 },
             );
+        }
+        // 캐시 히트(웜 인스턴스) 시 즉시 반환
+        const cacheKey = [
+            body.categoryCode,
+            body.itemCode,
+            body.kindCode || "",
+            body.rankCode || "",
+            body.productClsCode || "",
+            body.countryCode || "",
+        ].join("|");
+        const cached = priceCache.get(cacheKey);
+        if (cached && Date.now() - cached.t < CACHE_TTL_MS) {
+            return NextResponse.json(cached.data);
         }
         const today = new Date();
         const userEndday = body.endday || fmt(today);
@@ -177,7 +202,7 @@ export async function POST(req: NextRequest) {
                 userError = "최근 90일 동안 해당 품목·기간의 시세 데이터가 없습니다";
             }
         }
-        return NextResponse.json({
+        const payload = {
             ok,
             errorCode: final?.errorCode ?? null,
             errorMsg: userError,
@@ -186,7 +211,10 @@ export async function POST(req: NextRequest) {
             items: final?.items || [],
             attempts,
             raw: final?.raw ?? null,
-        });
+        };
+        // 성공(시세 있음) 응답만 캐시
+        if (ok) priceCache.set(cacheKey, { t: Date.now(), data: payload });
+        return NextResponse.json(payload);
     } catch (e) {
         console.error("kamis-price error:", e);
         return NextResponse.json(

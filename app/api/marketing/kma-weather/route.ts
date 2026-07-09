@@ -2,9 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireSession } from "@/lib/session";
 
 export const runtime = "nodejs";
+// 한국 기상청 서버 호출 지연을 줄이기 위해 서울(icn1) 리전 선호. 느린 응답 대비 시간 확보.
+export const preferredRegion = "icn1";
+export const maxDuration = 30;
 
 // API 키는 환경변수에서만 읽는다(시크릿 하드코딩 금지). 미설정 시 호출부에서 처리.
 const KMA_API_KEY = process.env.KMA_API_KEY || "";
+
+// 결과 캐시(웜 인스턴스 한정, best-effort) — 같은 좌표를 10분간 재사용해 쿼터·지연 절감.
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const weatherCache = new Map<string, { t: number; data: unknown }>();
 interface KmaRequest {
     nx?: number; // 기상청 격자 X (서울 종로구 기본값: 60)
     ny?: number; // 기상청 격자 Y (서울 종로구 기본값: 127)
@@ -41,8 +48,11 @@ async function callKma(
     });
     const url =
         `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst?${params.toString()}`;
+    // 개별 호출당 타임아웃(7초) — 한 호출이 멈춰 전체가 지연되는 것을 방지.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 7000);
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
         const httpStatus = res.status;
         const text = await res.text();
         let raw: any;
@@ -62,6 +72,8 @@ async function callKma(
             httpStatus: 0,
             url,
         };
+    } finally {
+        clearTimeout(timer);
     }
 }
 
@@ -83,8 +95,14 @@ export async function POST(req: NextRequest) {
     try {
         const nx = typeof body.nx === "number" ? body.nx : 60;
         const ny = typeof body.ny === "number" ? body.ny : 127;
+        // 캐시 히트(웜 인스턴스) 시 즉시 반환 — 외부 호출·지연 회피
+        const cacheKey = `${nx},${ny}`;
+        const cached = weatherCache.get(cacheKey);
+        if (cached && Date.now() - cached.t < CACHE_TTL_MS) {
+            return NextResponse.json(cached.data);
+        }
         // KMA 단기실황은 매시 정각 자료가 약 40분 후 제공되므로,
-        // 1~6시간 전 base_time을 순차 시도하여 데이터를 확보
+        // 1~3시간 전 base_time을 순차 시도하여 데이터를 확보
         const attempts: Array<{
             baseDate: string;
             baseTime: string;
@@ -105,7 +123,7 @@ export async function POST(req: NextRequest) {
             }
             | null = null;
         let lastResponse: any = null;
-        for (let i = 1; i <= 6; i++) {
+        for (let i = 1; i <= 3; i++) {
             const { baseDate, baseTime } = getBaseDateTimeAt(i);
             const { raw, httpStatus } = await callKma(
                 baseDate,
@@ -180,10 +198,10 @@ export async function POST(req: NextRequest) {
                     final.resultMsg || ""
                 }`.trim();
             } else if ((final?.items?.length || 0) === 0) {
-                userMsg = "최근 6시간의 기상청 단기실황 데이터가 없습니다";
+                userMsg = "최근 3시간의 기상청 단기실황 데이터가 없습니다";
             }
         }
-        return NextResponse.json({
+        const payload = {
             ok,
             resultCode: final?.resultCode ?? null,
             resultMsg: userMsg,
@@ -200,7 +218,10 @@ export async function POST(req: NextRequest) {
             items: final?.items || [],
             attempts,
             raw: final?.raw ?? null,
-        });
+        };
+        // 성공 응답만 캐시(빈 값/오류는 캐시하지 않음)
+        if (ok) weatherCache.set(cacheKey, { t: Date.now(), data: payload });
+        return NextResponse.json(payload);
     } catch (e) {
         console.error("kma-weather error:", e);
         return NextResponse.json(
