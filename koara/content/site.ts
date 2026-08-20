@@ -9,13 +9,30 @@ import { BRAND_EN } from "./types";
 
 /**
  * 배포 도메인.
- * Vercel 프로젝트 환경변수 NEXT_PUBLIC_SITE_URL 에 실제 도메인을 넣으면
- * canonical / OG / sitemap.xml / robots.txt 가 모두 그 값을 따른다.
+ *
+ * 우선순위
+ * 1. NEXT_PUBLIC_SITE_URL — 실제 도메인 (Vercel 프로젝트 환경변수에 등록)
+ * 2. NEXT_PUBLIC_VERCEL_URL — Vercel 이 자동 주입하는 배포 URL (preview 배포용)
+ * 3. http://localhost:3000 — 로컬 개발
+ *
+ * canonical / OG / sitemap.xml / robots.txt 가 모두 이 값을 따른다.
  * 도메인이 확정되지 않았으므로 임의의 주소를 하드코딩하지 않는다.
  */
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
-).replace(/\/$/, "");
+function resolveSiteUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicit) return explicit.replace(/\/$/, "");
+
+  const vercel = process.env.NEXT_PUBLIC_VERCEL_URL;
+  if (vercel) return `https://${vercel.replace(/\/$/, "")}`;
+
+  return "http://localhost:3000";
+}
+
+export const SITE_URL = resolveSiteUrl();
+
+/** 프로덕션 배포가 아닌 경우 (preview / 로컬) — 색인을 막는 데 사용한다. */
+export const IS_PRODUCTION_DEPLOY =
+  process.env.VERCEL_ENV === undefined || process.env.VERCEL_ENV === "production";
 
 export const site = {
   brandEn: BRAND_EN,

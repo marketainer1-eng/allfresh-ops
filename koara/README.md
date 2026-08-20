@@ -56,7 +56,11 @@ npm run lint         # eslint
 
 | 변수 | 설명 |
 |---|---|
-| `NEXT_PUBLIC_SITE_URL` | 배포 도메인. canonical / OG / sitemap / robots 에 사용. 미설정 시 `http://localhost:3000` |
+| `NEXT_PUBLIC_SITE_URL` | 배포 도메인. canonical / OG / sitemap / robots 에 사용 |
+
+미설정 시 Vercel 이 주입하는 `NEXT_PUBLIC_VERCEL_URL`(배포 URL) → `http://localhost:3000` 순으로
+대체됩니다. 또한 `VERCEL_ENV` 가 `production` 이 아닌 preview 배포에서는
+`robots.txt` 가 전체 차단으로 나가 임시 URL 이 색인되지 않습니다.
 
 `.env.example` 참고. 도메인이 확정되기 전까지 임의의 주소를 하드코딩하지 않았습니다.
 
