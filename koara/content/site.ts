@@ -34,6 +34,23 @@ export const SITE_URL = resolveSiteUrl();
 export const IS_PRODUCTION_DEPLOY =
   process.env.VERCEL_ENV === undefined || process.env.VERCEL_ENV === "production";
 
+/**
+ * 검색엔진 색인 허용 여부.
+ *
+ * - NEXT_PUBLIC_ALLOW_INDEXING="true"  → 허용 (공식 도메인 운영 시)
+ * - NEXT_PUBLIC_ALLOW_INDEXING="false" → 차단 (임시/검토용 배포)
+ * - 미설정                              → Vercel preview 면 차단, 그 외 허용
+ *
+ * 차단일 때 robots.txt 는 전체 Disallow 로, 모든 페이지는 noindex 로 나간다.
+ * 임시 URL 이 색인되어 추후 공식 도메인과 중복 콘텐츠가 되는 것을 막는다.
+ */
+export const IS_INDEXABLE =
+  process.env.NEXT_PUBLIC_ALLOW_INDEXING === "true"
+    ? true
+    : process.env.NEXT_PUBLIC_ALLOW_INDEXING === "false"
+      ? false
+      : IS_PRODUCTION_DEPLOY;
+
 export const site = {
   brandEn: BRAND_EN,
   brandKo: "고아라",

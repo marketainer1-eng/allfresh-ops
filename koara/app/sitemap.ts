@@ -5,6 +5,9 @@ import { getAllProjects } from "@/content/projects";
 import { getAllStories } from "@/content/stories";
 import { SITE_URL } from "@/content/site";
 
+/** 정적 export(output: "export")에서도 빌드 타임에 생성되도록 고정한다. */
+export const dynamic = "force-static";
+
 /**
  * XML sitemap.
  *

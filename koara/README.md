@@ -52,6 +52,21 @@ npm run typecheck    # tsc --noEmit
 npm run lint         # eslint
 ```
 
+### 정적 export (Netlify 드래그&드롭 등)
+
+전 페이지가 SSG 이므로 Node 런타임 없이도 그대로 동작합니다.
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://배포주소 npm run build:netlify
+cd out && zip -r ../site.zip .     # zip 루트에 index.html 이 오도록 out/ "안에서" 압축
+```
+
+`build:netlify` 은 `STATIC_EXPORT=1` + `NEXT_PUBLIC_ALLOW_INDEXING=false` 로 빌드합니다.
+공식 도메인에서 색인을 허용할 때는 `NEXT_PUBLIC_ALLOW_INDEXING=true` 로 다시 빌드하세요.
+
+정적 export 에서는 `content/redirects.ts` 의 301 규칙이 적용되지 않습니다.
+Netlify 를 쓸 경우 `out/_redirects` 파일에 같은 규칙을 넣으세요.
+
 ## 환경변수
 
 | 변수 | 설명 |

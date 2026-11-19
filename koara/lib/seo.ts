@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SITE_URL, site } from "@/content/site";
+import { IS_INDEXABLE, SITE_URL, site } from "@/content/site";
 
 /**
  * 페이지 메타데이터 빌더.
@@ -21,7 +21,7 @@ export interface PageMetaInput {
   type?: "website" | "article" | "profile";
   /** OG 이미지 경로. 없으면 site.defaultOgImage 사용 */
   image?: string;
-  /** 검색 색인 제외가 필요한 경우 */
+  /** 검색 색인 제외가 필요한 경우. 미지정 시 IS_INDEXABLE 을 따른다. */
   noindex?: boolean;
 }
 
@@ -36,7 +36,7 @@ export function buildMetadata({
   path,
   type = "website",
   image,
-  noindex = false,
+  noindex = !IS_INDEXABLE,
 }: PageMetaInput): Metadata {
   const url = absoluteUrl(path);
   const ogImage = image || site.defaultOgImage;
