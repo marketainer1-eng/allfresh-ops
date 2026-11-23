@@ -10,7 +10,7 @@
  * - datePublished / isbn / publisher 등도 값이 있을 때만 넣는다.
  */
 
-import { person, verifiedSameAs } from "@/content/person";
+import { person, profileUpdatedAt, verifiedSameAs } from "@/content/person";
 import { SITE_URL, site } from "@/content/site";
 import type { Book, BreadcrumbItem, OrganizationRef, Story } from "@/content/types";
 import { absoluteUrl } from "./seo";
@@ -94,6 +94,8 @@ export function profilePageSchema(path: string): Json {
     "@id": `${absoluteUrl(path)}#profilepage`,
     url: absoluteUrl(path),
     inLanguage: site.lang,
+    // 프로필 내용의 최종 작성·수정일 (content/person.ts 에서 관리)
+    dateModified: profileUpdatedAt,
     isPartOf: { "@id": WEBSITE_ID },
     mainEntity: { "@id": PERSON_ID },
   });

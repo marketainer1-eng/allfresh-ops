@@ -64,6 +64,12 @@ export const person: PersonEntity = {
   publicContactEmail: "",
 };
 
+/**
+ * 공식 프로필(ABOUT) 최종 작성·수정일. ISO 8601 (YYYY-MM-DD).
+ * 화면의 <time> 과 ProfilePage 구조화 데이터의 dateModified 에 함께 쓰인다.
+ */
+export const profileUpdatedAt = "2026-11-23";
+
 /** JSON-LD sameAs 에 실제로 내보낼 수 있는 URL 목록 */
 export function verifiedSameAs(): string[] {
   return person.channels

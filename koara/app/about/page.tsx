@@ -5,14 +5,16 @@ import { PageHero } from "@/components/layout/PageHero";
 import { Container } from "@/components/ui/Container";
 import { Section } from "@/components/ui/Section";
 import { ExternalIcon } from "@/components/ui/Button";
-import { PlaceholderText } from "@/components/ui/Placeholder";
+import { EmptyState, PlaceholderText } from "@/components/ui/Placeholder";
 import { JsonLd } from "@/components/seo/JsonLd";
 
-import { person } from "@/content/person";
+import { person, profileUpdatedAt } from "@/content/person";
+import { getLectureRange, getLecturesByYear } from "@/content/lectures";
 import { ecosystemRoles, expertiseAreas } from "@/content/home";
 import { site } from "@/content/site";
 import type { BreadcrumbItem } from "@/content/types";
 import { breadcrumbSchema, graph, profilePageSchema } from "@/lib/schema";
+import { formatKoreanDate } from "@/lib/format";
 import { buildMetadata } from "@/lib/seo";
 
 const PATH = "/about";
@@ -59,6 +61,9 @@ function Block({
  */
 export default function AboutPage() {
   const hasLinkedChannel = person.channels.some((c) => c.url.trim() !== "");
+  const lectureYears = getLecturesByYear();
+  const lectureCount = lectureYears.reduce((n, g) => n + g.items.length, 0);
+  const range = getLectureRange();
 
   return (
     <>
@@ -166,6 +171,108 @@ export default function AboutPage() {
               <PlaceholderText label="경력 요약 준비 중 — 확정된 내용만 등록합니다." />
             </Block>
 
+            {/* 강의 경력 */}
+            <Block id="lectures" eyebrow="LECTURES" title="강의 경력">
+              {lectureYears.length > 0 ? (
+                <>
+                  {range ? (
+                    <p className="mb-4 text-sm text-ink-muted">
+                      <time dateTime={String(range.from)}>{range.from}</time>
+                      {range.from === range.to ? null : (
+                        <>
+                          –<time dateTime={String(range.to)}>{range.to}</time>
+                        </>
+                      )}
+                      {" 기준 "}
+                      {lectureCount}건
+                    </p>
+                  ) : null}
+
+                  <div className="overflow-hidden rounded-2xl border border-line bg-white">
+                    <table className="w-full border-collapse text-left">
+                      <caption className="sr-only">
+                        고아라 강의 경력 — 연도별 기관 및 강의명
+                      </caption>
+                      <thead>
+                        <tr className="border-b border-line">
+                          <th
+                            scope="col"
+                            className="eyebrow w-24 px-5 py-3 text-[0.6rem] text-ink-faint sm:w-28"
+                          >
+                            기간
+                          </th>
+                          <th
+                            scope="col"
+                            className="eyebrow px-5 py-3 text-[0.6rem] text-ink-faint"
+                          >
+                            강의
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lectureYears.map((group) =>
+                          group.items.map((item, i) => (
+                            <tr
+                              key={`${group.year}-${i}-${item.title}`}
+                              className="border-b border-line last:border-b-0 align-top"
+                            >
+                              <th
+                                scope="row"
+                                className="px-5 py-4 text-sm font-medium text-ink"
+                              >
+                                {i === 0 ? (
+                                  <time dateTime={String(group.year)}>
+                                    {item.period || group.year}
+                                  </time>
+                                ) : (
+                                  <span className="text-ink-faint">
+                                    {item.period &&
+                                    item.period !== String(group.year)
+                                      ? item.period
+                                      : ""}
+                                  </span>
+                                )}
+                              </th>
+                              <td className="px-5 py-4">
+                                <p className="text-sm font-medium leading-snug text-ink">
+                                  {item.title}
+                                </p>
+                                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
+                                  {item.organization ? (
+                                    <span>{item.organization}</span>
+                                  ) : null}
+                                  {item.organization && item.category ? (
+                                    <span aria-hidden="true" className="text-ink-faint">
+                                      ·
+                                    </span>
+                                  ) : null}
+                                  {item.category ? (
+                                    <span className="text-ink-faint">
+                                      {item.category}
+                                    </span>
+                                  ) : null}
+                                </p>
+                                {item.note ? (
+                                  <p className="mt-1.5 text-xs leading-relaxed text-ink-faint">
+                                    {item.note}
+                                  </p>
+                                ) : null}
+                              </td>
+                            </tr>
+                          )),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <EmptyState
+                  title="강의 경력 준비 중입니다."
+                  description="확정된 강의 경력이 등록되면 연도별 표로 표시됩니다."
+                />
+              )}
+            </Block>
+
             {/* 활동 기반 */}
             <Block eyebrow="ACTIVITIES" title="교육 · 산업 · 연구 · 출판 · 미디어 · 프로젝트">
               <dl className="grid gap-3 sm:grid-cols-2">
@@ -251,6 +358,14 @@ export default function AboutPage() {
               </p>
             </Block>
           </div>
+
+          <p className="mt-14 border-t border-line pt-6 text-xs text-ink-faint">
+            이 프로필은{" "}
+            <time dateTime={profileUpdatedAt}>
+              {formatKoreanDate(profileUpdatedAt)}
+            </time>{" "}
+            기준으로 작성되었습니다.
+          </p>
         </Container>
       </Section>
     </>

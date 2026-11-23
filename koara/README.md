@@ -113,6 +113,7 @@ koara/
 │  ├─ person.ts              # Person Entity (정체성 원본)
 │  ├─ home.ts                # PAST / PRESENT / ECOSYSTEM / FUTURE
 │  ├─ redirects.ts           # 301 redirect 규칙
+│  ├─ lectures/index.ts      # 강의 경력
 │  ├─ stories/index.ts
 │  ├─ books/index.ts
 │  ├─ projects/index.ts
@@ -138,6 +139,8 @@ koara/
 | 외부 채널 링크 연결 | `content/media/index.ts` 의 `externalUrl`, `content/person.ts` 의 `channels[].url` |
 | 공식 URL 을 Schema 에 반영 | `content/person.ts` 의 `channels[].verified: true` |
 | 기관 관계를 Schema 에 반영 | `content/person.ts` 의 `organizations.*` 에 추가 + `emitToSchema: true` |
+| 강의 경력 등록 | `content/lectures/index.ts` — 배열에 항목 추가 (개수 제한 없음, 연도 내림차순 자동 정렬) |
+| 프로필 작성일 변경 | `content/person.ts` 의 `profileUpdatedAt` |
 | 메타 문구 교체 | `content/site.ts` |
 | URL 변경 시 301 | `content/redirects.ts` |
 
