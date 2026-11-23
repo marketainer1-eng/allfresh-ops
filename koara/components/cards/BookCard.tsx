@@ -36,7 +36,17 @@ function Cover({ book }: { book: Book }) {
 export function BookCard({ book }: { book: Book }) {
   return (
     <article className="group relative flex gap-5">
-      <div className="relative aspect-[3/4] w-24 shrink-0 overflow-hidden rounded-md border border-line bg-white sm:w-28">
+      <div
+        // 표지가 있으면 실제 판형 비율을 쓴다 (A5 등에서 상하가 잘리지 않도록)
+        style={
+          book.cover
+            ? { aspectRatio: `${book.cover.width} / ${book.cover.height}` }
+            : undefined
+        }
+        className={`relative w-24 shrink-0 self-start overflow-hidden rounded-md border border-line bg-white sm:w-28 ${
+          book.cover ? "" : "aspect-[3/4]"
+        }`}
+      >
         <Cover book={book} />
       </div>
 

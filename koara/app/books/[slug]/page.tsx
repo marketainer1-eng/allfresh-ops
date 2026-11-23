@@ -57,6 +57,7 @@ function BookFacts({ book }: { book: Book }) {
       value: <time dateTime={book.publicationDate}>{book.publicationDate}</time>,
     });
   if (book.isbn) facts.push({ label: "ISBN", value: book.isbn });
+  if (book.price) facts.push({ label: "정가", value: book.price });
   if (book.category) facts.push({ label: "분류", value: book.category });
 
   if (facts.length === 0) {
@@ -110,7 +111,16 @@ export default async function BookDetailPage({
           <div className="grid gap-10 lg:grid-cols-[260px_1fr] lg:gap-14">
             {/* 표지 */}
             <div>
-              <div className="relative aspect-[3/4] w-40 overflow-hidden rounded-lg border border-line bg-white lg:w-full">
+              <div
+                style={
+                  book.cover
+                    ? { aspectRatio: `${book.cover.width} / ${book.cover.height}` }
+                    : undefined
+                }
+                className={`relative w-40 self-start overflow-hidden rounded-lg border border-line bg-white lg:w-full ${
+                  book.cover ? "" : "aspect-[3/4]"
+                }`}
+              >
                 {book.cover ? (
                   <Image
                     src={book.cover.src}
@@ -143,13 +153,45 @@ export default async function BookDetailPage({
               <h2 className="text-lg text-ink sm:text-xl">책 소개</h2>
               <div className="prose-ko mt-4">
                 {book.description ? (
-                  <p className="text-[0.97rem] text-ink-muted">
-                    {book.description}
-                  </p>
+                  book.description.split("\n\n").map((para, i) => (
+                    <p key={i} className="text-[0.97rem] text-ink-muted">
+                      {para}
+                    </p>
+                  ))
                 ) : (
                   <PlaceholderText label="책 소개 준비 중" />
                 )}
               </div>
+
+              {book.tableOfContents.length > 0 ? (
+                <>
+                  <h2 className="mt-12 text-lg text-ink sm:text-xl">목차</h2>
+                  <div className="mt-4 space-y-6">
+                    {book.tableOfContents.map((part) => (
+                      <section key={part.part}>
+                        <h3 className="flex items-baseline gap-2.5 border-b border-line pb-2">
+                          <span className="eyebrow text-[0.62rem] text-brand">
+                            {part.part}
+                          </span>
+                          <span className="font-sans text-base font-semibold tracking-tight text-ink">
+                            {part.title}
+                          </span>
+                        </h3>
+                        <ul className="mt-3 space-y-1.5">
+                          {part.chapters.map((ch) => (
+                            <li
+                              key={ch}
+                              className="text-sm leading-relaxed text-ink-muted"
+                            >
+                              {ch}
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ))}
+                  </div>
+                </>
+              ) : null}
 
               <h2 className="mt-12 text-lg text-ink sm:text-xl">서지 정보</h2>
               <div className="mt-4">

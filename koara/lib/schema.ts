@@ -157,7 +157,7 @@ export function bookSchema(book: Book, path: string): Json | null {
       : undefined,
     datePublished: book.publicationDate,
     isbn: book.isbn,
-    description: book.description,
+    description: book.description.replace(/\s*\n+\s*/g, " ").trim(),
     genre: book.category,
     image: book.cover ? absoluteUrl(book.cover.src) : undefined,
   });

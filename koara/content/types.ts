@@ -181,6 +181,16 @@ export interface BookExternalLink {
   url: string;
 }
 
+/** 목차 — 부(部) 단위로 묶은 장(章) 목록 */
+export interface BookTocPart {
+  /** "1부" */
+  part: string;
+  /** "연구의 기초" */
+  title: string;
+  /** "1장 AI 이커머스 산업의 연구 범위" */
+  chapters: string[];
+}
+
 export interface Book {
   slug: string;
   title: string;
@@ -189,9 +199,15 @@ export interface Book {
   publisher: string;
   /** ISO 8601 (YYYY-MM-DD). 미확정이면 "" */
   publicationDate: string;
+  /** ISBN-13. 부가기호는 포함하지 않는다. 미확정이면 "" */
   isbn: string;
+  /** 정가 표기. 예: "30,000원". 미확정이면 "" */
+  price: string;
+  /** 목차. 비어 있으면 상세 페이지에서 목차 섹션을 숨긴다. */
+  tableOfContents: BookTocPart[];
   /** 표지 이미지 경로. 미확정이면 null → CSS placeholder 렌더 */
   cover: { src: string; alt: string; width: number; height: number } | null;
+  /** 책 소개. 빈 줄(\n\n)로 문단을 나눈다. */
   description: string;
   category: string;
   externalLinks: BookExternalLink[];
