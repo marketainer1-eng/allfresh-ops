@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/* ==================================================================
+   KO A RA — Design System
+   Editorial 50% / AI·Tech 30% / Academic 20%
+   ================================================================== */
+
+@theme {
+  /* ---------- Color ---------- */
+  --color-brand: #1457d9; /* KO A RA BLUE — 시그니처 */
+  --color-brand-strong: #0f45ae; /* hover / active */
+  --color-brand-light: #7fa8f5; /* Deep Navy 위에서 쓰는 액센트 */
+
+  --color-navy: #081a33; /* Deep Navy — 주요 어두운 배경 */
+  --color-navy-soft: #0f2949; /* Navy 위 카드 배경 */
+
+  --color-ivory: #f7f5ef; /* Editorial Ivory — 주요 밝은 배경 */
+  --color-soft: #eaf1ff; /* Soft Blue */
+  --color-ink: #20242b; /* Charcoal — 본문 */
+  --color-ink-muted: #565c68; /* 보조 텍스트 (AA 대비 확보) */
+  --color-ink-faint: #6f7684; /* 캡션 / 라벨 */
+
+  --color-line: #e3dfd4; /* Ivory 위 구분선 */
+  --color-line-soft: #eceae3;
+  --color-line-navy: #1b3457; /* Navy 위 구분선 */
+
+  /* ---------- Typography ---------- */
+  --font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", Roboto,
+    "Helvetica Neue", sans-serif;
+  --font-serif:
+    "Noto Serif KR", "Nanum Myeongjo", "Apple SD Gothic Neo", Georgia,
+    "Times New Roman", serif;
+}
+
+/* ==================================================================
+   Base
+   ================================================================== */
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    background-color: var(--color-ivory);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all; /* 한글 줄바꿈 가독성 */
+    overflow-wrap: break-word;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.32;
+  }
+
+  /* 키보드 포커스 — 모든 인터랙티브 요소에 명확한 링 */
+  :focus-visible {
+    outline: 3px solid var(--color-brand);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* Deep Navy 배경 위에서는 밝은 포커스 링 */
+  .on-navy :focus-visible {
+    outline-color: var(--color-brand-light);
+  }
+
+  ::selection {
+    background-color: var(--color-brand);
+    color: #ffffff;
+  }
+}
+
+/* ==================================================================
+   Components — 반복되는 에디토리얼 패턴
+   ================================================================== */
+
+@layer components {
+  /* 영문 대문자 라벨 (KO A RA / PAST / PRESENT / FUTURE) */
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /* 본문 문단 리듬 */
+  .prose-ko p {
+    line-height: 1.85;
+    margin-bottom: 1.15em;
+  }
+  .prose-ko p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* ----------------------------------------------------------------
+     Expert IP — 순환형 다이어그램
+     · 모바일: 일반 문서 흐름(그리드)으로 그대로 쌓인다.
+     · md 이상: 정사각 컨테이너 안에 원형 배치.
+       각 노드 위치는 인라인 --x / --y (컨테이너 대비 %)로 전달한다.
+     ---------------------------------------------------------------- */
+  .radial {
+    position: relative;
+  }
+  .radial-node,
+  .radial-center {
+    position: static;
+  }
+
+  @media (min-width: 768px) {
+    .radial {
+      aspect-ratio: 1 / 1;
+      max-width: 38rem;
+      margin-inline: auto;
+    }
+    .radial-node {
+      position: absolute;
+      left: calc(50% + (var(--x) * 1%));
+      top: calc(50% + (var(--y) * 1%));
+      transform: translate(-50%, -50%);
+      white-space: nowrap;
+    }
+    .radial-center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      max-width: 11rem;
+    }
+  }
+}
