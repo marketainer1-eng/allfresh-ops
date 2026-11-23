@@ -1,0 +1,24 @@
+# Netlify 빌드 설정
+#
+# Netlify 사이트를 이 저장소에 연결(Git 연동)할 때 사용한다.
+# 사이트 설정에서 Base directory 를 "koara" 로 지정하면
+# Netlify 가 이 파일을 읽어 아래 설정대로 빌드한다.
+#
+# publish 경로는 base(=koara) 기준이므로 "out" 이 koara/out 을 가리킨다.
+#
+# ⚠️ 이 파일은 이 작업 환경에서 실제 Netlify 빌드로 검증하지 못했다.
+#    (세션의 네트워크 정책이 netlify.com 접근을 차단함)
+#    첫 빌드 로그를 한 번 확인하는 것을 권장한다.
+
+[build]
+  command = "npm run build:netlify"
+  publish = "out"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # canonical / Open Graph / sitemap.xml / robots.txt 의 기준 주소.
+  # 공식 도메인이 확정되면 이 값을 바꾼다.
+  NEXT_PUBLIC_SITE_URL = "https://ko-a-ra-homepage.netlify.app"
+  # 임시 주소가 검색엔진에 색인되지 않도록 차단한다.
+  # 이 주소를 정식 운영 주소로 쓸 때 "true" 로 바꾼다.
+  NEXT_PUBLIC_ALLOW_INDEXING = "false"
